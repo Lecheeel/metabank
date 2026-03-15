@@ -1,0 +1,452 @@
+% !TEX program = xelatex
+% MetaBank 操作手册 - 使用 XeLaTeX 编译
+\documentclass[12pt,a4paper]{article}
+\usepackage{xeCJK}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+\setCJKmainfont{SimSun}[AutoFakeBold=true]
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+
+\title{\textbf{MetaBank 元宇宙金融养老社区}\\[0.5em]\large 操作手册与技术原理}
+\author{FIT「国脉杯」软件设计大赛 · 队伍：冲冲冲}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+\fbox{\parbox{0.9\textwidth}{
+\textbf{文档说明：} 本文档使用 \textbf{LaTeX}（XeLaTeX 引擎）编写，包含数学公式、集合符号（如 $\mathcal{S}$, $\mathcal{F}$）、希腊字母（如 $\varepsilon$, $\sigma$）、下标上标等特殊符号。阅读 PDF 可获得最佳排版效果。
+}}
+\end{center}
+\vspace{1em}
+
+\tableofcontents
+\newpage
+
+%==============================================================================
+\section{系统概述}
+%==============================================================================
+
+MetaBank 是基于元宇宙技术构建的金融养老社区平台，旨在解决老龄化群体在数字金融服务中的交互痛点。系统采用前后端分离架构，后端使用 Python FastAPI，前端使用 React + Vite，数据采用 JSON 文件存储。
+
+\subsection{系统架构}
+
+系统整体架构可抽象为：
+\begin{equation}
+\mathcal{S} = (\mathcal{F}, \mathcal{B}, \mathcal{D}, \mathcal{A})
+\end{equation}
+其中 $\mathcal{F}$ 为前端模块，$\mathcal{B}$ 为后端 API，$\mathcal{D}$ 为数据层，$\mathcal{A}$ 为 AI 智能助手模块。
+
+各模块间的数据流满足：
+\begin{equation}
+\mathcal{F} \xrightarrow{\text{HTTP}} \mathcal{B} \xrightarrow{\text{读写}} \mathcal{D}, \quad \mathcal{A} \subset \mathcal{B}
+\end{equation}
+
+%==============================================================================
+\section{认证与安全原理}
+%==============================================================================
+
+\subsection{JWT 认证机制}
+
+系统采用 JWT (JSON Web Token) 进行无状态认证。令牌生成与验证遵循以下流程。
+
+\subsubsection{令牌生成}
+
+设用户标识为 $u$，过期时间为 $t_{\exp}$，密钥为 $K$，则载荷 (payload) 为：
+\begin{equation}
+P = \{ \mathtt{sub}: u,\; \mathtt{uid}: \mathrm{id}(u),\; \mathtt{exp}: t_{\exp},\; \mathtt{is\_admin}: \phi(u) \}
+\end{equation}
+其中 $\mathrm{id}(u)$ 为用户 ID，$\phi(u) \in \{0,1\}$ 表示是否为管理员。
+
+JWT 由三部分组成，以点号连接：
+\begin{equation}
+\mathrm{JWT} = \mathrm{Base64URL}(\mathrm{Header}) \,\|\, \mathrm{Base64URL}(\mathrm{Payload}) \,\|\, \mathrm{Base64URL}(\mathrm{Signature})
+\end{equation}
+
+签名采用 HMAC-SHA256：
+\begin{equation}
+\mathrm{Signature} = \mathrm{HMAC}\text{-}\mathrm{SHA256}\bigl( \mathrm{Header} \| \mathrm{Payload},\; K \bigr)
+\end{equation}
+
+\subsubsection{令牌验证}
+
+验证时需满足：
+\begin{equation}
+\mathrm{Verify}(\mathrm{JWT}, K) \land (t_{\mathrm{now}} < t_{\exp}) \implies \text{认证通过}
+\end{equation}
+
+\subsection{密码哈希}
+
+密码采用 bcrypt 算法存储，不可逆。设明文密码为 $p$，盐值为 $s$，成本因子为 $c$，则：
+\begin{equation}
+h = \mathrm{bcrypt}(p, s, c) = \mathrm{EksBlowfish}\bigl( \mathrm{ExpandKey}(p, s, 2^c) \bigr)
+\end{equation}
+
+验证时：
+\begin{equation}
+\mathrm{verify}(p, h) \iff \mathrm{bcrypt}(p, h.s, h.c) = h
+\end{equation}
+
+\subsection{钱包地址生成}
+
+用户钱包地址格式为 $\mathtt{0xGM} + H_{36}$，其中 $H_{36}$ 为 36 位十六进制串。生成算法：
+\begin{equation}
+r \sim \mathrm{Uniform}(\{0,1\}^{160}), \quad H = \mathrm{SHA256}(r)[:36]
+\end{equation}
+即先生成 20 字节随机数 $r$，再对其做 SHA-256 哈希并取前 36 个十六进制字符。
+
+%==============================================================================
+\section{交易所与定价原理}
+%==============================================================================
+
+\subsection{标的与基准价}
+
+设标的集合为 $\mathcal{T} = \{\tau_1, \tau_2, \ldots, \tau_n\}$，每个标的 $\tau_i$ 有基准价 $P_i^{(0)}$。例如：
+\begin{equation}
+P_{\mathtt{GM}}^{(0)} = 12.5,\quad P_{\mathtt{GMAI}}^{(0)} = 25.0,\quad P_{\mathtt{GMC}}^{(0)} = 1.0
+\end{equation}
+
+\subsection{当前价格模拟}
+
+为模拟市场波动，当前价格采用带随机扰动的几何形式：
+\begin{equation}
+P_t = P^{(0)} \cdot (1 + \varepsilon_t), \quad \varepsilon_t \sim \mathcal{N}(0, \sigma^2)
+\end{equation}
+其中 $\sigma \approx 0.03$，即约 3\% 的标准差。
+
+实现中，$\varepsilon_t$ 的随机种子由标的符号与当前时间共同决定，以保证同一分钟内价格稳定：
+\begin{equation}
+\mathrm{seed} = \mathrm{MD5}(\mathrm{symbol} \| \mathrm{datetime})[:8] \mod 2^{32}
+\end{equation}
+
+\subsection{涨跌幅计算}
+
+涨跌幅定义为：
+\begin{equation}
+\Delta\% = \frac{P_t - P^{(0)}}{P^{(0)}} \times 100\%
+\end{equation}
+
+\subsection{K 线生成}
+
+K 线 (OHLC) 数据满足：
+\begin{align}
+O_i &= P_i \\
+C_i &= P_i + \delta_i, \quad \delta_i \sim \mathcal{N}(0, 0.02 \cdot P_i) \\
+H_i &= \max(O_i, C_i) \cdot (1 + U_1), \quad U_1 \sim \mathrm{Uniform}(0, 0.015) \\
+L_i &= \min(O_i, C_i) \cdot (1 - U_2), \quad U_2 \sim \mathrm{Uniform}(0, 0.015)
+\end{align}
+成交量 $V_i$ 在 $[10^4, 5\times10^5]$ 间均匀采样。
+
+\subsection{交易成本}
+
+买入或卖出时，总成本/收入为：
+\begin{equation}
+\mathrm{Total} = P_{\mathrm{trade}} \times Q
+\end{equation}
+其中 $P_{\mathrm{trade}}$ 为成交价，$Q$ 为数量（份）。
+
+余额更新规则：
+\begin{equation}
+B_{\mathrm{new}} = B_{\mathrm{old}} - \mathrm{Total} \quad (\text{买入}), \qquad B_{\mathrm{new}} = B_{\mathrm{old}} + \mathrm{Total} \quad (\text{卖出})
+\end{equation}
+
+%==============================================================================
+\section{定投 (DCA) 原理}
+%==============================================================================
+
+\subsection{定投公式}
+
+定时定投 (Dollar Cost Averaging) 的核心思想是固定间隔、固定金额买入，以平滑价格波动。设：
+\begin{itemize}
+\item $A$：每次定投数量（份）
+\item $T$：定投间隔（分钟）
+\item $N$：计划执行次数
+\item $P_1, P_2, \ldots, P_N$：各次执行时的价格
+\end{itemize}
+
+则总投入（以国脉币计）为：
+\begin{equation}
+\mathrm{Cost}_{\mathrm{total}} = A \cdot \sum_{i=1}^{N} P_i
+\end{equation}
+
+获得的总份额：
+\begin{equation}
+Q_{\mathrm{total}} = N \cdot A
+\end{equation}
+
+平均成本：
+\begin{equation}
+\bar{P} = \frac{\mathrm{Cost}_{\mathrm{total}}}{Q_{\mathrm{total}}} = \frac{1}{N} \sum_{i=1}^{N} P_i
+\end{equation}
+
+\subsection{与一次性投入对比}
+
+若一次性在 $t=1$ 时全仓买入，成本为 $N \cdot A \cdot P_1$。定投的优越性体现在当价格下行时，$\bar{P} < P_1$，从而降低平均持仓成本。
+
+%==============================================================================
+\section{持仓与盈亏计算}
+%==============================================================================
+
+\subsection{持仓聚合}
+
+设用户 $u$ 的交易记录集合为 $\mathcal{R}_u$，对标的 $\tau$ 的净持仓为：
+\begin{equation}
+Q_u(\tau) = \sum_{r \in \mathcal{R}_u, r.\mathrm{symbol}=\tau} \bigl( \mathbb{1}_{r.\mathrm{action}=\mathtt{buy}} \cdot r.\mathrm{amount} - \mathbb{1}_{r.\mathrm{action}=\mathtt{sell}} \cdot r.\mathrm{amount} \bigr)
+\end{equation}
+
+\subsection{成本与市值}
+
+持仓成本（仅考虑买入）：
+\begin{equation}
+C_u(\tau) = \sum_{r: \mathrm{buy}} r.\mathrm{amount} \cdot r.\mathrm{price}
+\end{equation}
+
+平均成本：
+\begin{equation}
+\bar{C}_u(\tau) = \frac{C_u(\tau)}{Q_u(\tau)}
+\end{equation}
+
+当前市值与浮动盈亏：
+\begin{equation}
+V_u(\tau) = Q_u(\tau) \cdot P_{\mathrm{current}}(\tau), \quad \mathrm{Profit}_u(\tau) = V_u(\tau) - C_u(\tau)
+\end{equation}
+
+盈亏比例：
+\begin{equation}
+\mathrm{Profit}\% = \frac{P_{\mathrm{current}} - \bar{C}}{\bar{C}} \times 100\%
+\end{equation}
+
+%==============================================================================
+\section{AI 工具调用原理}
+%==============================================================================
+
+\subsection{Function Calling 流程}
+
+AI 助手采用大语言模型 (LLM) 的 Function Calling 能力，将用户自然语言意图映射为结构化工具调用。
+
+设用户输入为 $m$，工具集合为 $\mathcal{T} = \{t_1, t_2, \ldots, t_k\}$，则：
+\begin{equation}
+\mathrm{LLM}(m \mid \mathcal{T}) \to \begin{cases}
+\text{直接回复} & \text{若无需工具} \\
+(t_i, \mathrm{args}) & \text{若需调用 } t_i
+\end{cases}
+\end{equation}
+
+\subsection{工具定义}
+
+各工具 $t_i$ 由名称、描述、参数 schema 组成。例如余额查询：
+\begin{equation}
+t_{\mathrm{balance}} = (\mathtt{get\_user\_balance}, \emptyset)
+\end{equation}
+
+市场分析：
+\begin{equation}
+t_{\mathrm{market}} = (\mathtt{get\_market\_analysis}, \{\mathtt{symbol}: \mathrm{optional}\})
+\end{equation}
+
+\subsection{多轮调用}
+
+若 LLM 返回工具调用，则执行工具得到结果 $r$，将 $(t_i, \mathrm{args}, r)$ 作为新消息反馈给 LLM，直至 LLM 不再请求工具：
+\begin{equation}
+m_0 = m \to (t_1, a_1) \to r_1 \to m_1 \to (t_2, a_2) \to r_2 \to \cdots \to \text{最终回复}
+\end{equation}
+
+%==============================================================================
+\section{操作教程}
+%==============================================================================
+
+本节提供 MetaBank 各功能模块的详细操作步骤，便于用户快速上手。
+
+%----------------------------------------------------------------------------
+\subsection{环境准备}
+%----------------------------------------------------------------------------
+
+\begin{enumerate}
+\item 安装 Python 3.8+ 与 Node.js 18+
+\item 克隆项目：\texttt{git clone <repo> \&\& cd metabank}
+\item 后端：\texttt{cd backend \&\& pip install -r requirements.txt \&\& python main.py}
+\item 前端：\texttt{cd frontend \&\& npm install \&\& npm run dev}
+\item 浏览器访问 \texttt{http://localhost:5173}
+\end{enumerate}
+
+\textbf{默认账户：} 管理员 \texttt{admin} / \texttt{admin123}；新用户注册自动获得 10,000 国脉币 (GMC)。
+
+\textbf{数据初始化：} 可执行 \texttt{python backend/scripts/seed\_fake\_users.py} 与 \texttt{python backend/scripts/seed\_trades\_orders.py} 生成演示数据。
+
+%----------------------------------------------------------------------------
+\subsection{注册与登录}
+%----------------------------------------------------------------------------
+
+\textbf{步骤 1：} 打开首页，点击右上角「注册」。
+
+\textbf{步骤 2：} 填写用户名（如 \texttt{demo}）和密码（如 \texttt{123456}），点击「注册」。
+
+\textbf{步骤 3：} 注册成功后自动登录并跳转到应用内，系统分配专属钱包地址，格式为 $\mathtt{0xGM}$ 开头的 40 位十六进制串。
+
+\textbf{步骤 4：} 若已注册，在首页点击「登录」，输入用户名和密码即可进入。
+
+%----------------------------------------------------------------------------
+\subsection{仪表盘}
+%----------------------------------------------------------------------------
+
+登录后默认进入仪表盘，主要元素包括：
+
+\begin{itemize}
+\item \textbf{余额卡片：} 显示当前国脉币 (GMC) 余额与钱包地址，可点击复制。
+\item \textbf{市场概览：} 展示 GM、GMAI、GMC、GMFT、METAV、AIFIN 等标的的实时价格与涨跌幅 $\Delta\%$。
+\item \textbf{快捷操作：} 转账、交易所、商城等入口。
+\item \textbf{最近交易：} 最近资金变动记录。
+\end{itemize}
+
+%----------------------------------------------------------------------------
+\subsection{钱包与转账}
+%----------------------------------------------------------------------------
+
+\textbf{查看资产：} 点击左侧「钱包」，可查看完整交易流水与余额。
+
+\textbf{转账操作：}
+\begin{enumerate}
+\item 点击「转账」按钮。
+\item 输入对方钱包地址（可从其他用户处获取，或使用 \texttt{admin} 用户地址测试）。
+\item 输入转账金额（单位：GMC）。
+\item 点击「确认」完成转账，交易即时到账。
+\end{enumerate}
+
+\textbf{注意：} 平台内所有金额均为国脉币 GMC，是平台虚拟代币，非人民币。
+
+%----------------------------------------------------------------------------
+\subsection{商城购物}
+%----------------------------------------------------------------------------
+
+\textbf{步骤 1：} 点击左侧「商城」，浏览商品列表。商品分类包括虚拟商品（AI 月卡、虚拟土地、NFT）、实物商品（智能手环、体检套餐）等。
+
+\textbf{步骤 2：} 点击目标商品的「购买」按钮。
+
+\textbf{步骤 3：} 选择购买数量，实物商品需填写收货地址与手机号。
+
+\textbf{步骤 4：} 确认购买，系统扣除国脉币并生成订单，可在「我的订单」中查看。
+
+%----------------------------------------------------------------------------
+\subsection{交易所交易}
+%----------------------------------------------------------------------------
+
+\textbf{步骤 1：} 点击左侧「交易所」，上方为 K 线图，下方为交易表单。
+
+\textbf{步骤 2：} 选择「买入」或「卖出」，选择标的（如国脉 AI 概念 GMAI）。
+
+\textbf{步骤 3：} 输入数量（份），系统显示预估金额 $P \times Q$。
+
+\textbf{步骤 4：} 点击「买入」或「卖出」，成交后余额与持仓自动更新。
+
+\textbf{步骤 5：} 在「持仓」与「交易历史」中查看投资组合与盈亏。盈亏比例由公式 $\mathrm{Profit}\% = (P_{\mathrm{current}} - \bar{C})/\bar{C} \times 100\%$ 计算。
+
+%----------------------------------------------------------------------------
+\subsection{社区动态}
+%----------------------------------------------------------------------------
+
+\textbf{步骤 1：} 点击左侧「社区」，切换到「社区动态」标签。
+
+\textbf{步骤 2：} 浏览其他用户发布的动态，包括生活分享、运动打卡、商城购物、交易理财等。
+
+\textbf{步骤 3：} 可对动态进行「点赞」或「评论」。
+
+\textbf{步骤 4：} 切换到「消息」标签可与好友私聊，支持在聊天中直接转账国脉币。
+
+%----------------------------------------------------------------------------
+\subsection{AI 智能助手}
+%----------------------------------------------------------------------------
+
+AI 助手支持自然语言交互与工具调用，常用操作如下。
+
+\textbf{查看余额：} 输入「查看我的余额」或点击快捷按钮，AI 调用 \texttt{get\_user\_balance} 并展示结果。
+
+\textbf{市场分析：} 输入「分析今日行情」或「GMAI 走势如何」，AI 调用 \texttt{get\_market\_analysis} 返回各标的行情与建议。
+
+\textbf{查用户动态：} 输入「老张头最近在干嘛」，AI 调用 \texttt{get\_user\_activity} 汇总该用户最近动态。
+
+\textbf{买入标的：} 输入「买入 50 份 GMAI」，AI 调用 \texttt{buy\_stock} 执行交易。
+
+\textbf{设置定投：} 输入「设置 GMAI 定投，每次 10 份，每 60 分钟」，AI 调用 \texttt{set\_dca\_task} 创建定投任务。
+
+\textbf{注意：} 所有金额均以国脉币 GMC 为单位。
+
+%----------------------------------------------------------------------------
+\subsection{定投任务管理}
+%----------------------------------------------------------------------------
+
+定投任务由 AI 助手或后台创建，系统按设定间隔自动执行买入。用户可在 AI 助手中通过自然语言查询或修改定投计划。
+
+定投参数包括：标的符号、每次数量 $A$、间隔时间 $T$（分钟）、执行次数 $N$。平均成本满足 $\bar{P} = \frac{1}{N}\sum_{i=1}^{N} P_i$。
+
+%----------------------------------------------------------------------------
+\subsection{管理后台}
+%----------------------------------------------------------------------------
+
+\textbf{步骤 1：} 使用管理员账户 \texttt{admin} / \texttt{admin123} 登录。
+
+\textbf{步骤 2：} 登录后左侧出现「管理后台」入口，点击进入。
+
+\textbf{步骤 3：} 后台功能包括：
+\begin{itemize}
+\item \textbf{概览：} 用户数、订单数、交易量等统计。
+\item \textbf{用户管理：} 查看用户列表，可调整用户余额。
+\item \textbf{订单管理：} 处理商城订单状态。
+\item \textbf{商品管理：} 添加、编辑、删除商品。
+\item \textbf{系统设置：} 配置 AI 大模型 API Key 等。
+\end{itemize}
+
+%----------------------------------------------------------------------------
+\subsection{API 调用}
+%----------------------------------------------------------------------------
+
+后端默认运行于 \texttt{http://localhost:8000}，除登录、注册等公开接口外，其余接口需在请求头中携带 JWT：
+\begin{equation}
+\mathtt{Authorization}: \mathtt{Bearer}\;\; \mathrm{JWT}
+\end{equation}
+登录接口 \texttt{POST /api/auth/login} 返回的 \texttt{access\_token} 即为 JWT。
+
+%==============================================================================
+\section{附录}
+%==============================================================================
+
+\subsection{符号表（LaTeX 数学符号）}
+
+本文档中的公式与符号均使用 LaTeX 数学模式编写，下表列出常用符号含义：
+
+\begin{table}[h]
+\centering
+\begin{tabular}{cl}
+\toprule
+符号 & 含义 \\
+\midrule
+$\mathcal{S}, \mathcal{F}, \mathcal{B}, \mathcal{D}, \mathcal{A}$ & 集合（系统、前端、后端、数据、AI） \\
+$P^{(0)}$ & 基准价格 \\
+$P_t$ & 时刻 $t$ 的价格 \\
+$\varepsilon, \sigma$ & 希腊字母（扰动、标准差） \\
+$\mathcal{N}(\mu, \sigma^2)$ & 正态分布 \\
+$B$ & 用户余额 \\
+$Q$ & 持仓数量 \\
+$\bar{C}, \bar{P}$ & 平均成本、平均价格 \\
+$\mathtt{GMC}$ & 国脉币（等宽字体表示代码/常量） \\
+$\land, \implies$ & 逻辑与、蕴含 \\
+$\|$ & 字符串连接 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{文档技术说明}
+
+本手册使用 \texttt{article} 文档类，依赖 \texttt{xeCJK}、\texttt{amsmath}、\texttt{hyperref} 等宏包，通过 XeLaTeX 编译以正确渲染中文与数学公式。
+
+
+\end{document}

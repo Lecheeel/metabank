@@ -19,6 +19,23 @@
 - **前端**: React + Vite + TailwindCSS + Recharts
 - **认证**: JWT Token
 - **UI**: 玻璃拟态风格 + 渐变设计
+- **版本控制**: Git
+
+## 开发与版本控制
+
+本项目使用 **Git** 进行版本管理，支持团队协作与代码追溯。
+
+```bash
+# 克隆项目
+git clone <repository-url>
+cd metabank
+
+# 查看提交历史
+git log --oneline
+
+# 拉取最新代码
+git pull origin main
+```
 
 ## 快速启动
 

@@ -1,13 +1,21 @@
 @import "tailwindcss";
 
+/* ── 强制亮色模式，不受系统影响 ── */
+:root {
+  color-scheme: light;
+}
+
 @theme {
-  --color-primary: #6366f1;
-  --color-primary-dark: #4f46e5;
-  --color-secondary: #8b5cf6;
-  --color-accent: #06b6d4;
-  --color-surface: #1e1b4b;
-  --color-surface-light: #312e81;
-  --color-gold: #f59e0b;
+  --color-primary:       #f97316;
+  --color-primary-dark:  #ea580c;
+  --color-primary-light: #fff7ed;
+  --color-secondary:     #fb923c;
+  --color-accent:        #fbbf24;
+  --color-surface:       #ffffff;
+  --color-surface-alt:   #fafaf8;
+  --color-border:        #e5e7eb;
+  --color-text:          #111827;
+  --color-text-muted:    #6b7280;
 }
 
 * {
@@ -16,142 +24,137 @@
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: light !important;
+}
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg, #0f0c29 0%, #1a1145 50%, #24243e 100%);
+  background: #ffffff;
   min-height: 100vh;
-  color: #e2e8f0;
+  color: #111827;
+  font-size: 1.0625rem;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
+/* 覆盖系统暗色偏好 */
+@media (prefers-color-scheme: dark) {
+  html { color-scheme: light !important; }
+  body { background: #ffffff !important; color: #111827 !important; }
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f3f4f6; }
+::-webkit-scrollbar-thumb { background: rgba(249,115,22,0.4); border-radius: 3px; }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.4);
-  border-radius: 3px;
-}
-
+/* ── 通用组件 ── */
 .glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(249,115,22,0.12);
 }
 
 .glass-strong {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(30px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(24px);
+  border-right: 1px solid #e5e7eb;
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4);
+  background: linear-gradient(135deg, #f97316, #ea580c);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .gradient-border {
-  position: relative;
-}
-
-.gradient-border::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  -webkit-mask-composite: xor;
-  pointer-events: none;
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.08);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
-  padding: 0.6rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #ffffff;
+  padding: 0.75rem 2rem;
   border-radius: 0.75rem;
   font-weight: 600;
+  font-size: 1.125rem;
   border: none;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.25s;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(249,115,22,0.3);
 }
-
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 6px 20px rgba(249,115,22,0.45);
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  padding: 0.6rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: #ffffff;
+  color: #f97316;
+  padding: 0.75rem 2rem;
   border-radius: 0.75rem;
   font-weight: 600;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 1.125rem;
+  border: 1.5px solid #f97316;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.25s;
+  text-decoration: none;
+  white-space: nowrap;
 }
-
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: #fff7ed;
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 1rem;
-  padding: 1.5rem;
-  transition: all 0.3s;
+  padding: 1.75rem;
+  transition: all 0.25s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
-
 .card:hover {
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.15);
+  border-color: rgba(249,115,22,0.3);
+  box-shadow: 0 6px 24px rgba(249,115,22,0.12);
+  transform: translateY(-1px);
 }
 
 .input-field {
   width: 100%;
-  padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 1rem 1.25rem;
+  background: #ffffff;
+  border: 1.5px solid #d1d5db;
   border-radius: 0.75rem;
-  color: white;
-  font-size: 0.95rem;
+  color: #111827;
+  font-size: 1.125rem;
   outline: none;
-  transition: all 0.3s;
+  transition: all 0.25s;
 }
-
 .input-field:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249,115,22,0.15);
 }
+.input-field::placeholder { color: #9ca3af; }
 
-.input-field::placeholder {
-  color: rgba(255, 255, 255, 0.3);
-}
-
+/* ── 动画 ── */
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
 }
-
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.6); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,0.4); }
+  50%       { box-shadow: 0 0 0 8px rgba(249,115,22,0); }
 }
 
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
+.animate-float      { animation: float 3s ease-in-out infinite; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }

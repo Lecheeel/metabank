@@ -46,115 +46,115 @@ export default function Wallet() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (!walletInfo) return <div className="flex items-center justify-center h-64"><div className="text-white/50">加载中...</div></div>;
+  if (!walletInfo) return <div className="flex items-center justify-center h-64"><div className="text-gray-500">加载中...</div></div>;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">我的钱包</h1>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+      <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#111827' }}>我的钱包</h1>
 
       {msg && (
-        <div className="bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 px-4 py-3 rounded-xl text-sm flex items-center justify-between">
+        <div className="rounded-xl flex items-center justify-between" style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#ea580c', padding: '1rem 1.25rem', fontSize: '1rem' }}>
           {msg}
-          <button onClick={() => setMsg('')} className="text-white/50 hover:text-white">&times;</button>
+          <button onClick={() => setMsg('')} style={{ color: '#6b7280' }}>&times;</button>
         </div>
       )}
 
       <div className="card gradient-border">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between" style={{ gap: '1.5rem' }}>
           <div>
-            <p className="text-white/50 text-sm mb-1">国脉币余额</p>
-            <h2 className="text-5xl font-bold gradient-text">{walletInfo.balance?.toLocaleString()}</h2>
-            <p className="text-white/30 text-sm mt-1">GMC Token</p>
+            <p style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.35rem' }}>国脉币余额</p>
+            <h2 className="font-bold gradient-text" style={{ fontSize: '3rem' }}>{walletInfo.balance?.toLocaleString()}</h2>
+            <p style={{ fontSize: '1rem', color: '#6b7280', marginTop: '0.35rem' }}>GMC Token</p>
           </div>
-          <button onClick={() => setShowTransfer(!showTransfer)} className="btn-primary flex items-center gap-2">
-            <Send size={16} />
+          <button onClick={() => setShowTransfer(!showTransfer)} className="btn-primary flex items-center gap-2" style={{ fontSize: '1rem', padding: '0.75rem 1.5rem' }}>
+            <Send size={18} />
             转账
           </button>
         </div>
-        <div className="mt-4 bg-white/5 rounded-xl p-4">
-          <p className="text-xs text-white/40 mb-2">钱包地址</p>
+        <div className="bg-gray-50 rounded-xl" style={{ marginTop: '1.5rem', padding: '1.25rem' }}>
+          <p style={{ fontSize: '1.0625rem', color: '#6b7280', marginBottom: '0.5rem' }}>钱包地址</p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 text-sm text-cyan-400 font-mono break-all">{walletInfo.wallet_address}</code>
-            <button onClick={copyAddress} className="text-white/40 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-all">
-              {copied ? <CheckCircle size={18} className="text-green-400" /> : <Copy size={18} />}
+            <code className="flex-1 font-mono text-orange-500 break-all" style={{ fontSize: '1rem' }}>{walletInfo.wallet_address}</code>
+            <button onClick={copyAddress} className="p-2 rounded-lg hover:bg-gray-100 transition-all" style={{ color: '#6b7280' }}>
+              {copied ? <CheckCircle size={20} className="text-green-400" /> : <Copy size={20} />}
             </button>
           </div>
         </div>
       </div>
 
       {showTransfer && (
-        <form onSubmit={handleTransfer} className="card space-y-4">
-          <h3 className="text-lg font-semibold">转账</h3>
+        <form onSubmit={handleTransfer} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>转账</h3>
           <div>
-            <label className="block text-sm text-white/60 mb-2">接收方钱包地址</label>
+            <label className="block" style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.5rem' }}>接收方钱包地址</label>
             <input className="input-field font-mono" placeholder="0xGM..." value={transferForm.to_address}
               onChange={e => setTransferForm({...transferForm, to_address: e.target.value})} required />
           </div>
           <div>
-            <label className="block text-sm text-white/60 mb-2">金额 (GMC)</label>
+            <label className="block" style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.5rem' }}>金额 (GMC)</label>
             <input type="number" step="0.01" min="0.01" className="input-field" placeholder="输入转账金额"
               value={transferForm.amount} onChange={e => setTransferForm({...transferForm, amount: e.target.value})} required />
           </div>
           <div>
-            <label className="block text-sm text-white/60 mb-2">备注</label>
+            <label className="block" style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.5rem' }}>备注</label>
             <input className="input-field" placeholder="选填" value={transferForm.note}
               onChange={e => setTransferForm({...transferForm, note: e.target.value})} />
           </div>
-          <div className="flex gap-3">
-            <button type="submit" className="btn-primary">确认转账</button>
-            <button type="button" onClick={() => setShowTransfer(false)} className="btn-secondary">取消</button>
+          <div className="flex" style={{ gap: '1rem' }}>
+            <button type="submit" className="btn-primary" style={{ fontSize: '1rem' }}>确认转账</button>
+            <button type="button" onClick={() => setShowTransfer(false)} className="btn-secondary" style={{ fontSize: '1rem' }}>取消</button>
           </div>
         </form>
       )}
 
       <div className="card">
-        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <Search size={18} />
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Search size={20} />
           地址查询
         </h3>
-        <div className="flex gap-2">
+        <div className="flex" style={{ gap: '0.75rem' }}>
           <input className="input-field font-mono flex-1" placeholder="输入钱包地址查询..."
             value={lookupAddr} onChange={e => setLookupAddr(e.target.value)} />
           <button onClick={handleLookup} className="btn-primary">查询</button>
         </div>
         {lookupResult && (
-          <div className="mt-3 bg-white/5 rounded-xl p-3 flex items-center justify-between">
+          <div className="mt-4 bg-gray-50 rounded-xl flex items-center justify-between" style={{ padding: '1.25rem' }}>
             <div>
-              <p className="text-sm font-medium">{lookupResult.nickname}</p>
-              <p className="text-xs text-white/40">@{lookupResult.username}</p>
+              <p style={{ fontSize: '1rem', fontWeight: 500 }}>{lookupResult.nickname}</p>
+              <p style={{ fontSize: '1.0625rem', color: '#6b7280' }}>@{lookupResult.username}</p>
             </div>
             <button onClick={() => { setTransferForm({...transferForm, to_address: lookupResult.wallet_address}); setShowTransfer(true); }}
-              className="text-sm text-indigo-400 hover:text-indigo-300">转账给TA</button>
+              style={{ fontSize: '1rem', color: '#f97316' }}>转账给TA</button>
           </div>
         )}
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold mb-3">交易记录</h3>
-        <div className="space-y-2">
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.25rem' }}>交易记录</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {walletInfo.transactions?.map(t => (
-            <div key={t.id} className="card flex items-center justify-between py-3">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+            <div key={t.id} className="card flex items-center justify-between" style={{ padding: '1.25rem' }}>
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                   t.to_address === walletInfo.wallet_address ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
                 }`}>
-                  {t.to_address === walletInfo.wallet_address ? <ArrowDownRight size={20} /> : <ArrowUpRight size={20} />}
+                  {t.to_address === walletInfo.wallet_address ? <ArrowDownRight size={24} /> : <ArrowUpRight size={24} />}
                 </div>
                 <div>
-                  <p className="text-sm font-medium">{t.note || (t.type === 'transfer' ? '转账' : t.type)}</p>
-                  <p className="text-xs text-white/40">{new Date(t.created_at).toLocaleString('zh-CN')}</p>
-                  <p className="text-xs text-white/30 font-mono mt-0.5">
+                  <p style={{ fontSize: '1rem', fontWeight: 500 }}>{t.note || (t.type === 'transfer' ? '转账' : t.type)}</p>
+                  <p style={{ fontSize: '1.0625rem', color: '#6b7280' }}>{new Date(t.created_at).toLocaleString('zh-CN')}</p>
+                  <p className="font-mono" style={{ fontSize: '1.0625rem', color: '#6b7280', marginTop: '0.25rem' }}>
                     {t.to_address === walletInfo.wallet_address ? `来自: ${t.from_address?.slice(0, 16)}...` : `发至: ${t.to_address?.slice(0, 16)}...`}
                   </p>
                 </div>
               </div>
-              <span className={`font-mono text-lg font-semibold ${t.to_address === walletInfo.wallet_address ? 'text-green-400' : 'text-red-400'}`}>
+              <span className={`font-mono font-semibold ${t.to_address === walletInfo.wallet_address ? 'text-green-400' : 'text-red-400'}`} style={{ fontSize: '1.25rem' }}>
                 {t.to_address === walletInfo.wallet_address ? '+' : '-'}{t.amount?.toLocaleString()}
               </span>
             </div>
           ))}
           {(!walletInfo.transactions || walletInfo.transactions.length === 0) && (
-            <div className="card text-center text-white/40 py-8">暂无交易记录</div>
+            <div className="card text-center" style={{ color: '#6b7280', padding: '3rem', fontSize: '1rem' }}>暂无交易记录</div>
           )}
         </div>
       </div>

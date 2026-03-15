@@ -19,7 +19,7 @@ app.add_middleware(
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-for fname in ["users.json", "products.json", "orders.json", "transactions.json", "messages.json", "market.json", "auto_tasks.json"]:
+for fname in ["users.json", "products.json", "orders.json", "transactions.json", "messages.json", "market.json", "auto_tasks.json", "community_posts.json"]:
     fpath = os.path.join(DATA_DIR, fname)
     if not os.path.exists(fpath):
         json.dump([], open(fpath, "w"))

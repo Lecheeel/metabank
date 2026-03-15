@@ -27,26 +27,27 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8" style={{ background: 'linear-gradient(180deg,#fff7ed 0%,#ffffff 50%)' }}>
+      <div className="w-full max-w-md" style={{ margin: '0 auto' }}>
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold animate-pulse-glow">M</div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-2xl font-bold animate-pulse-glow">M</div>
+            <img src="https://mail.gmiot.com/customer/gmiot.com_logo.png" alt="国脉科技" style={{ height: '1.75rem' }} onError={(e) => { e.target.style.display = 'none'; }} />
             <span className="text-2xl font-bold gradient-text">MetaBank</span>
           </Link>
-          <h2 className="text-2xl font-bold mb-2">创建账户</h2>
-          <p className="text-white/50">注册后将自动获得10,000国脉币和专属钱包地址</p>
+          <h2 className="font-bold mb-2" style={{ fontSize: '1.75rem' }}>创建账户</h2>
+          <p style={{ fontSize: '1.125rem', color: '#6b7280' }}>注册后将自动获得10,000国脉币和专属钱包地址</p>
         </div>
 
         <form onSubmit={handleSubmit} className="card space-y-5">
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm">
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl" style={{ fontSize: '1.0625rem' }}>
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-sm text-white/60 mb-2">用户名 *</label>
+            <label className="block mb-2" style={{ fontSize: '1.0625rem', color: '#6b7280' }}>用户名 *</label>
             <input
               type="text"
               className="input-field"
@@ -58,7 +59,7 @@ export default function Register() {
           </div>
 
           <div>
-            <label className="block text-sm text-white/60 mb-2">昵称</label>
+            <label className="block mb-2" style={{ fontSize: '1.0625rem', color: '#6b7280' }}>昵称</label>
             <input
               type="text"
               className="input-field"
@@ -69,7 +70,7 @@ export default function Register() {
           </div>
 
           <div>
-            <label className="block text-sm text-white/60 mb-2">手机号</label>
+            <label className="block mb-2" style={{ fontSize: '1.0625rem', color: '#6b7280' }}>手机号</label>
             <input
               type="text"
               className="input-field"
@@ -80,7 +81,7 @@ export default function Register() {
           </div>
 
           <div>
-            <label className="block text-sm text-white/60 mb-2">密码 *</label>
+            <label className="block mb-2" style={{ fontSize: '1.0625rem', color: '#6b7280' }}>密码 *</label>
             <div className="relative">
               <input
                 type={showPwd ? 'text' : 'password'}
@@ -90,19 +91,19 @@ export default function Register() {
                 onChange={e => setForm({ ...form, password: e.target.value })}
                 required
               />
-              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60" onClick={() => setShowPwd(!showPwd)}>
+              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-500" onClick={() => setShowPwd(!showPwd)}>
                 {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
 
-          <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2 py-3">
-            <UserPlus size={18} />
+          <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2 py-4">
+            <UserPlus size={22} />
             {loading ? '注册中...' : '注册'}
           </button>
 
-          <p className="text-center text-sm text-white/50">
-            已有账户？<Link to="/login" className="text-indigo-400 hover:text-indigo-300">立即登录</Link>
+          <p className="text-center" style={{ fontSize: '1.0625rem', color: '#6b7280' }}>
+            已有账户？<Link to="/login" className="text-orange-500 hover:text-orange-400">立即登录</Link>
           </p>
         </form>
       </div>
