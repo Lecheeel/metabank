@@ -24,6 +24,14 @@ for fname in ["users.json", "products.json", "orders.json", "transactions.json",
     if not os.path.exists(fpath):
         json.dump([], open(fpath, "w"))
 
+settings_path = os.path.join(DATA_DIR, "settings.json")
+if not os.path.exists(settings_path):
+    json.dump({
+        "dashscope_api_key": "",
+        "llm_model": "qwen3.5-flash",
+        "llm_system_prompt": "",
+    }, open(settings_path, "w"), ensure_ascii=False, indent=2)
+
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(wallet.router, prefix="/api/wallet", tags=["Wallet"])
 app.include_router(shop.router, prefix="/api/shop", tags=["Shop"])

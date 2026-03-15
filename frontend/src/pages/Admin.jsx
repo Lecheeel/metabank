@@ -1,17 +1,24 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
-import { Users, ShoppingBag, TrendingUp, Activity, Package, Coins, Plus, Minus } from 'lucide-react';
+import { Users, ShoppingBag, TrendingUp, Activity, Package, Coins, Plus, Settings, Eye, EyeOff, Key, Bot, Trash2 } from 'lucide-react';
 
 export default function Admin() {
   const [dashboard, setDashboard] = useState(null);
   const [users, setUsers] = useState([]);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [tab, setTab] = useState('overview');
   const [adjustUser, setAdjustUser] = useState(null);
   const [adjustAmount, setAdjustAmount] = useState('');
   const [newProduct, setNewProduct] = useState({ name: '', description: '', price: '', image: '', category: 'virtual', stock: '999' });
   const [msg, setMsg] = useState('');
+
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [modelInput, setModelInput] = useState('qwen3.5-flash');
+  const [systemPrompt, setSystemPrompt] = useState('');
+  const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -22,6 +29,11 @@ export default function Admin() {
     api.get('/admin/users').then(setUsers).catch(() => {});
     api.get('/admin/orders').then(setOrders).catch(() => {});
     api.get('/admin/products').then(setProducts).catch(() => {});
+    api.get('/admin/settings').then(s => {
+      setSettings(s);
+      setModelInput(s.llm_model || 'qwen3.5-flash');
+      setSystemPrompt(s.llm_system_prompt || '');
+    }).catch(() => {});
   };
 
   const handleAdjustBalance = async () => {
@@ -58,6 +70,36 @@ export default function Admin() {
     loadData();
   };
 
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      const payload = {
+        llm_model: modelInput,
+        llm_system_prompt: systemPrompt,
+      };
+      if (apiKeyInput.trim()) {
+        payload.dashscope_api_key = apiKeyInput.trim();
+      }
+      const res = await api.put('/admin/settings', payload);
+      setMsg('设置已保存');
+      setSettings(res.settings);
+      setApiKeyInput('');
+    } catch (err) {
+      setMsg(err.detail || '保存失败');
+    }
+    setSavingSettings(false);
+  };
+
+  const handleClearApiKey = async () => {
+    try {
+      await api.delete('/admin/settings/api-key');
+      setMsg('API Key 已清除');
+      loadData();
+    } catch (err) {
+      setMsg(err.detail || '操作失败');
+    }
+  };
+
   const stats = dashboard ? [
     { label: '总用户', value: dashboard.total_users, icon: Users, color: 'from-indigo-500 to-purple-500' },
     { label: '总订单', value: dashboard.total_orders, icon: Package, color: 'from-pink-500 to-rose-500' },
@@ -76,8 +118,11 @@ export default function Admin() {
       )}
 
       <div className="flex gap-2 flex-wrap">
-        {[['overview', '概览'], ['users', '用户'], ['orders', '订单'], ['products', '商品']].map(([k, v]) => (
-          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === k ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-white/50'}`}>{v}</button>
+        {[['overview', '概览'], ['users', '用户'], ['orders', '订单'], ['products', '商品'], ['settings', '系统设置']].map(([k, v]) => (
+          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 ${tab === k ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-white/50'}`}>
+            {k === 'settings' && <Settings size={14} />}
+            {v}
+          </button>
         ))}
       </div>
 
@@ -235,6 +280,134 @@ export default function Admin() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {tab === 'settings' && (
+        <div className="space-y-6">
+          <div className="card space-y-5">
+            <div className="flex items-center gap-3 pb-4 border-b border-white/10">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                <Bot size={20} className="text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">AI 大模型配置</h3>
+                <p className="text-xs text-white/40">配置 DashScope API Key 以启用 Qwen 大模型智能服务</p>
+              </div>
+            </div>
+
+            <div className="bg-white/5 rounded-xl p-4 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-white/60">当前状态</span>
+                {settings?.has_api_key ? (
+                  <span className="text-xs px-3 py-1 rounded-full bg-green-500/15 text-green-400 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                    Qwen 模型已启用
+                  </span>
+                ) : (
+                  <span className="text-xs px-3 py-1 rounded-full bg-white/10 text-white/40 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/30" />
+                    本地模式
+                  </span>
+                )}
+              </div>
+              {settings?.has_api_key && settings?.dashscope_api_key_masked && (
+                <p className="text-xs text-white/30 font-mono">已配置: {settings.dashscope_api_key_masked}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="flex items-center gap-2 text-sm text-white/60 mb-2">
+                <Key size={14} />
+                DashScope API Key
+              </label>
+              <p className="text-xs text-white/30 mb-2">
+                请前往 <a href="https://dashscope.console.aliyun.com/" target="_blank" rel="noopener" className="text-indigo-400 hover:text-indigo-300 underline">阿里云 DashScope 控制台</a> 获取 API Key
+              </p>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type={showApiKey ? 'text' : 'password'}
+                    className="input-field pr-10 font-mono text-sm"
+                    placeholder={settings?.has_api_key ? '输入新的 API Key 以替换...' : '输入 DashScope API Key (sk-...)'}
+                    value={apiKeyInput}
+                    onChange={e => setApiKeyInput(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                  >
+                    {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                {settings?.has_api_key && (
+                  <button onClick={handleClearApiKey} className="px-3 py-2 rounded-xl text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-all" title="清除 API Key">
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm text-white/60 mb-2">模型选择</label>
+              <select className="input-field text-sm" value={modelInput} onChange={e => setModelInput(e.target.value)}>
+                <option value="qwen3.5-flash">Qwen 3.5 Flash（推荐，速度快）</option>
+                <option value="qwen-plus">Qwen Plus（更强）</option>
+                <option value="qwen-turbo">Qwen Turbo（最快）</option>
+                <option value="qwen-max">Qwen Max（最强）</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm text-white/60 mb-2">自定义系统提示词（可选）</label>
+              <textarea
+                className="input-field text-sm min-h-[80px] resize-y"
+                placeholder="添加额外的 AI 行为指令...例如：请在每次回复末尾推荐一款商城产品"
+                value={systemPrompt}
+                onChange={e => setSystemPrompt(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            <button
+              onClick={handleSaveSettings}
+              disabled={savingSettings}
+              className="btn-primary w-full py-3 flex items-center justify-center gap-2"
+            >
+              <Settings size={16} />
+              {savingSettings ? '保存中...' : '保存设置'}
+            </button>
+          </div>
+
+          <div className="card space-y-3">
+            <h3 className="font-semibold">使用说明</h3>
+            <div className="space-y-2 text-sm text-white/50">
+              <p>1. 在 <a href="https://dashscope.console.aliyun.com/" target="_blank" rel="noopener" className="text-indigo-400 hover:text-indigo-300">阿里云 DashScope</a> 注册并获取 API Key</p>
+              <p>2. 将 API Key 填入上方输入框并保存</p>
+              <p>3. 保存后，AI 助手将使用 Qwen 大模型进行智能对话</p>
+              <p>4. 未配置 API Key 时，系统自动使用本地模式回复</p>
+              <p>5. 用户也可在 AI 助手页面自行配置个人 API Key</p>
+            </div>
+          </div>
+
+          <div className="card">
+            <h3 className="font-semibold mb-3">管理员账号信息</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between py-2 border-b border-white/5">
+                <span className="text-white/50">用户名</span>
+                <span className="font-mono">admin</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-white/5">
+                <span className="text-white/50">密码</span>
+                <span className="font-mono">admin123</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-white/50">权限</span>
+                <span className="text-amber-400">超级管理员</span>
+              </div>
+            </div>
           </div>
         </div>
       )}

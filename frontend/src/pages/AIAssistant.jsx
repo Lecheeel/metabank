@@ -1,20 +1,28 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../utils/api';
-import { Bot, Send, Clock, Trash2, Zap, TrendingUp, Wallet, Timer } from 'lucide-react';
+import { Bot, Send, Clock, Trash2, Zap, TrendingUp, Wallet, Timer, Settings, Eye, EyeOff, Key, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function AIAssistant() {
   const [messages, setMessages] = useState([
-    { role: 'ai', content: '👋 您好！我是MetaBank AI智能助手，基于大语言模型(LLM)技术，为您提供智能金融服务。\n\n我可以帮您：\n- 💰 查询资产余额\n- 📈 分析市场行情和价格预测\n- 🛒 快捷买卖操作\n- 💸 代币转账\n- ⏰ 设置自动交易任务\n\n请问您需要什么帮助？' }
+    { role: 'ai', content: '👋 您好！我是MetaBank AI智能助手，基于 Qwen 大语言模型(LLM)技术，为您提供智能金融服务。\n\n我可以帮您：\n- 💰 查询资产余额\n- 📈 分析市场行情和价格预测\n- 🛒 快捷买卖操作\n- 💸 代币转账\n- ⏰ 设置自动交易任务\n\n请问您需要什么帮助？' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [autoTasks, setAutoTasks] = useState([]);
   const [tab, setTab] = useState('chat');
   const [taskForm, setTaskForm] = useState({ symbol: 'GMAI', action: 'buy', amount: '', target_price: '', interval_minutes: '60', repeat: '5', task_type: 'dca' });
+  const [llmStatus, setLlmStatus] = useState(null);
+  const [showKeyConfig, setShowKeyConfig] = useState(false);
+  const [userApiKey, setUserApiKey] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [savedUserKey, setSavedUserKey] = useState('');
   const msgEnd = useRef(null);
 
   useEffect(() => {
     api.get('/llm/auto-tasks').then(setAutoTasks).catch(() => {});
+    api.get('/llm/status').then(setLlmStatus).catch(() => {});
+    const saved = localStorage.getItem('user_dashscope_key');
+    if (saved) setSavedUserKey(saved);
   }, []);
 
   useEffect(() => {
@@ -28,12 +36,34 @@ export default function AIAssistant() {
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setLoading(true);
     try {
-      const res = await api.post('/llm/chat', { message: userMsg });
-      setMessages(prev => [...prev, { role: 'ai', content: res.ai_response }]);
+      const payload = { message: userMsg };
+      if (savedUserKey) {
+        payload.api_key = savedUserKey;
+      }
+      const res = await api.post('/llm/chat', payload);
+      setMessages(prev => [...prev, {
+        role: 'ai',
+        content: res.ai_response,
+        model: res.model,
+      }]);
     } catch {
       setMessages(prev => [...prev, { role: 'ai', content: '抱歉，AI助手暂时无法响应，请稍后再试。' }]);
     }
     setLoading(false);
+  };
+
+  const handleSaveUserKey = () => {
+    if (userApiKey.trim()) {
+      localStorage.setItem('user_dashscope_key', userApiKey.trim());
+      setSavedUserKey(userApiKey.trim());
+      setUserApiKey('');
+      setShowKeyConfig(false);
+    }
+  };
+
+  const handleClearUserKey = () => {
+    localStorage.removeItem('user_dashscope_key');
+    setSavedUserKey('');
   };
 
   const createAutoTask = async () => {
@@ -57,6 +87,8 @@ export default function AIAssistant() {
     api.get('/llm/auto-tasks').then(setAutoTasks);
   };
 
+  const isQwenActive = llmStatus?.has_api_key || !!savedUserKey;
+
   const quickPrompts = [
     { icon: Wallet, label: '查看余额', prompt: '查看我的余额' },
     { icon: TrendingUp, label: '市场分析', prompt: '分析今日行情走势' },
@@ -66,17 +98,35 @@ export default function AIAssistant() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
             <Bot size={22} className="text-white" />
           </div>
           <div>
             <h1 className="text-2xl font-bold">AI 智能助手</h1>
-            <p className="text-xs text-white/40">LLM驱动 · 智能交易 · 市场预测</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              {isQwenActive ? (
+                <span className="text-xs flex items-center gap-1 text-green-400">
+                  <CheckCircle size={12} />
+                  Qwen {llmStatus?.model || 'qwen3.5-flash'} 已启用
+                </span>
+              ) : (
+                <span className="text-xs flex items-center gap-1 text-white/40">
+                  <AlertCircle size={12} />
+                  本地模式（未配置 API Key）
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => setShowKeyConfig(!showKeyConfig)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 ${showKeyConfig ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'text-white/40 hover:text-white/60 border border-white/10'}`}
+          >
+            <Key size={12} />API Key
+          </button>
           <button onClick={() => setTab('chat')} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === 'chat' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-white/50'}`}>
             AI对话
           </button>
@@ -85,6 +135,54 @@ export default function AIAssistant() {
           </button>
         </div>
       </div>
+
+      {showKeyConfig && (
+        <div className="card space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Key size={16} className="text-indigo-400" />
+              个人 API Key 配置
+            </h3>
+            <button onClick={() => setShowKeyConfig(false)} className="text-white/30 hover:text-white text-sm">&times;</button>
+          </div>
+          <p className="text-xs text-white/40">
+            配置您自己的 DashScope API Key，优先级高于管理员配置。
+            前往 <a href="https://dashscope.console.aliyun.com/" target="_blank" rel="noopener" className="text-indigo-400 underline">阿里云 DashScope</a> 获取。
+          </p>
+
+          {savedUserKey ? (
+            <div className="flex items-center justify-between bg-green-500/5 border border-green-500/20 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle size={16} className="text-green-400" />
+                <span className="text-sm text-green-400">已配置个人 API Key</span>
+                <span className="text-xs text-white/20 font-mono">{savedUserKey.slice(0, 6)}...{savedUserKey.slice(-4)}</span>
+              </div>
+              <button onClick={handleClearUserKey} className="text-xs text-red-400/60 hover:text-red-400">清除</button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type={showApiKey ? 'text' : 'password'}
+                  className="input-field pr-10 font-mono text-sm"
+                  placeholder="输入您的 DashScope API Key (sk-...)"
+                  value={userApiKey}
+                  onChange={e => setUserApiKey(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                >
+                  {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+              <button onClick={handleSaveUserKey} className="btn-primary text-sm px-4">保存</button>
+            </div>
+          )}
+          <p className="text-xs text-white/20">Key 仅存储在浏览器本地，不会上传到服务器</p>
+        </div>
+      )}
 
       {tab === 'chat' && (
         <div className="flex flex-col h-[calc(100vh-14rem)]">
@@ -99,13 +197,18 @@ export default function AIAssistant() {
           <div className="flex-1 card overflow-y-auto p-4 space-y-4">
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-2xl ${m.role === 'user' ? '' : ''}`}>
+                <div className="max-w-2xl">
                   {m.role === 'ai' && (
                     <div className="flex items-center gap-2 mb-1.5">
                       <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
                         <Bot size={14} className="text-white" />
                       </div>
                       <span className="text-xs text-white/40">MetaBank AI</span>
+                      {m.model && (
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${m.model === 'local' ? 'bg-white/5 text-white/30' : 'bg-green-500/10 text-green-400'}`}>
+                          {m.model === 'local' ? '本地' : m.model}
+                        </span>
+                      )}
                     </div>
                   )}
                   <div className={`px-4 py-3 rounded-2xl ${m.role === 'user' ? 'bg-indigo-500/20 border border-indigo-500/20 rounded-br-md' : 'bg-white/5 border border-white/10 rounded-bl-md'}`}>

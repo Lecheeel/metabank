@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from storage import read_json, write_json, find_one, update_json, append_json
+from storage import read_json, write_json, find_one, update_json, append_json, read_settings, update_settings
 from auth_utils import require_admin, get_current_user, hash_password, generate_wallet_address
 from datetime import datetime
 from typing import Optional
@@ -97,3 +97,42 @@ def delete_product(product_id: str, user=Depends(require_admin)):
     products = [p for p in products if p["id"] != product_id]
     write_json("products.json", products)
     return {"message": "商品已删除"}
+
+class SettingsUpdate(BaseModel):
+    dashscope_api_key: Optional[str] = None
+    llm_model: Optional[str] = None
+    llm_system_prompt: Optional[str] = None
+
+@router.get("/settings")
+def get_settings(user=Depends(require_admin)):
+    settings = read_settings()
+    masked = dict(settings)
+    key = masked.get("dashscope_api_key", "")
+    if key and len(key) > 8:
+        masked["dashscope_api_key_masked"] = key[:4] + "*" * (len(key) - 8) + key[-4:]
+        masked["has_api_key"] = True
+    else:
+        masked["dashscope_api_key_masked"] = ""
+        masked["has_api_key"] = bool(key)
+    masked.pop("dashscope_api_key", None)
+    return masked
+
+@router.put("/settings")
+def put_settings(req: SettingsUpdate, user=Depends(require_admin)):
+    updates = {k: v for k, v in req.dict().items() if v is not None}
+    settings = update_settings(updates)
+    masked = dict(settings)
+    key = masked.get("dashscope_api_key", "")
+    if key and len(key) > 8:
+        masked["dashscope_api_key_masked"] = key[:4] + "*" * (len(key) - 8) + key[-4:]
+        masked["has_api_key"] = True
+    else:
+        masked["dashscope_api_key_masked"] = ""
+        masked["has_api_key"] = bool(key)
+    masked.pop("dashscope_api_key", None)
+    return {"message": "设置已保存", "settings": masked}
+
+@router.delete("/settings/api-key")
+def clear_api_key(user=Depends(require_admin)):
+    update_settings({"dashscope_api_key": ""})
+    return {"message": "API Key 已清除"}
