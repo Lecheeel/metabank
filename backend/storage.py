@@ -49,3 +49,26 @@ def find_one(filename, key, value):
 def find_many(filename, key, value):
     data = read_json(filename)
     return [item for item in data if item.get(key) == value]
+
+def read_settings():
+    path = os.path.join(DATA_DIR, "settings.json")
+    with _get_lock("settings.json"):
+        if not os.path.exists(path):
+            return {}
+        with open(path, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return {}
+
+def write_settings(data):
+    path = os.path.join(DATA_DIR, "settings.json")
+    with _get_lock("settings.json"):
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+def update_settings(updates):
+    settings = read_settings()
+    settings.update(updates)
+    write_settings(settings)
+    return settings
