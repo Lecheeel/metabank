@@ -13,15 +13,23 @@ function HeadingRenderer({ level, children, ...props }) {
   const id = React.Children.toArray(children).reduce(flatten, '').replace(/\s+/g, '-').toLowerCase();
 
   const styles = {
-    1: 'text-2xl font-extrabold text-gray-900 mt-6 mb-3 pb-2 border-b-2 border-orange-400',
-    2: 'text-xl font-bold text-gray-900 mt-5 mb-2 pb-1.5 border-b border-orange-200',
-    3: 'text-lg font-semibold text-gray-800 mt-4 mb-2 pl-3 border-l-3 border-orange-400',
+    1: 'text-3xl font-extrabold text-gray-900 mt-7 mb-4 pb-2 border-b-2 border-orange-400',
+    2: 'text-2xl font-bold text-gray-900 mt-6 mb-3 pb-1.5 border-b border-orange-200',
+    3: 'text-xl font-semibold text-gray-800 mt-5 mb-2.5 pl-3 border-l-4 border-orange-400',
     4: 'text-base font-semibold text-gray-800 mt-3 mb-1.5',
     5: 'text-sm font-semibold text-gray-700 mt-3 mb-1',
     6: 'text-sm font-medium text-gray-600 mt-3 mb-1',
   };
 
   return <Tag id={id} className={styles[level] || ''} {...props}>{children}</Tag>;
+}
+
+function ParagraphRenderer({ children }) {
+  return (
+    <p className="my-3 text-gray-800 leading-8">
+      {children}
+    </p>
+  );
 }
 
 function TableRenderer({ children }) {
@@ -80,7 +88,7 @@ function InlineCodeRenderer({ children }) {
 
 function BlockquoteRenderer({ children }) {
   return (
-    <blockquote className="border-l-4 border-orange-400 bg-orange-50/50 pl-4 pr-3 py-2 my-3 rounded-r-lg italic text-gray-600">
+    <blockquote className="border-l-4 border-orange-400 bg-orange-50/50 pl-4 pr-3 py-2.5 my-4 rounded-r-lg italic text-gray-600 [&_p]:my-0">
       {children}
     </blockquote>
   );
@@ -89,9 +97,33 @@ function BlockquoteRenderer({ children }) {
 function ListRenderer({ ordered, children, ...props }) {
   const Tag = ordered ? 'ol' : 'ul';
   const cls = ordered
-    ? 'list-decimal list-outside pl-8 my-2 space-y-1.5 marker:text-orange-500 marker:font-semibold'
-    : 'list-disc list-outside pl-8 my-2 space-y-1.5 marker:text-orange-400';
+    ? 'list-decimal list-outside pl-7 my-4 space-y-2.5 marker:text-orange-500 marker:font-bold marker:text-[1.05em]'
+    : 'list-disc list-outside pl-7 my-4 space-y-2 marker:text-orange-400';
   return <Tag className={cls} {...props}>{children}</Tag>;
+}
+
+function ListItemRenderer({ children }) {
+  return (
+    <li className="pl-1 text-gray-800 leading-8 [&>p]:my-1.5 [&>p:first-child]:text-[1.04em] [&>p:first-child]:font-semibold [&>p:first-child]:text-gray-900 [&>ul]:mt-2 [&>ul]:mb-2 [&>ol]:mt-2 [&>ol]:mb-2">
+      {children}
+    </li>
+  );
+}
+
+function StrongRenderer({ children }) {
+  return (
+    <strong className="font-bold text-gray-900">
+      {children}
+    </strong>
+  );
+}
+
+function EmRenderer({ children }) {
+  return (
+    <em className="italic text-gray-700">
+      {children}
+    </em>
+  );
 }
 
 function HrRenderer() {
@@ -124,7 +156,7 @@ function ImageRenderer({ src, alt }) {
 
 export default function MarkdownRenderer({ content, className = '' }) {
   return (
-    <div className={`markdown-body leading-relaxed ${className}`}>
+    <div className={`markdown-body text-gray-800 leading-8 [overflow-wrap:anywhere] ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -134,6 +166,7 @@ export default function MarkdownRenderer({ content, className = '' }) {
           h4: ({ children, ...props }) => <HeadingRenderer level={4} {...props}>{children}</HeadingRenderer>,
           h5: ({ children, ...props }) => <HeadingRenderer level={5} {...props}>{children}</HeadingRenderer>,
           h6: ({ children, ...props }) => <HeadingRenderer level={6} {...props}>{children}</HeadingRenderer>,
+          p: ParagraphRenderer,
           table: TableRenderer,
           thead: TheadRenderer,
           th: ThRenderer,
@@ -147,6 +180,9 @@ export default function MarkdownRenderer({ content, className = '' }) {
           blockquote: BlockquoteRenderer,
           ul: ({ children, ...props }) => <ListRenderer ordered={false} {...props}>{children}</ListRenderer>,
           ol: ({ children, ...props }) => <ListRenderer ordered={true} {...props}>{children}</ListRenderer>,
+          li: ListItemRenderer,
+          strong: StrongRenderer,
+          em: EmRenderer,
           hr: HrRenderer,
           a: LinkRenderer,
           img: ImageRenderer,
