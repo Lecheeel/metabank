@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import { useLocation } from 'react-router-dom';
 import api from '../utils/api';
 import { useChatStream } from '../utils/useChatStream';
@@ -38,6 +38,113 @@ function ToolResultBlock({ result }) {
       </div>
     </div>
   );
+}
+
+function ToolTimelineBlock({ block, embedded = false }) {
+  const resolved = block.tool_calls || [];
+  const pending = block.pending_tool_calls || [];
+  const pendingNames = pending
+    .map(item => item?.function?.name)
+    .filter(Boolean)
+    .join('、');
+
+  if (resolved.length === 0 && pending.length === 0) return null;
+
+  if (embedded) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
+            <Bot size={18} />
+          </div>
+          <div>
+            <p style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111827' }}>顾问正在为您处理</p>
+            <p style={{ fontSize: '0.95rem', color: '#6b7280' }}>工具结果会按实际处理顺序显示在这里。</p>
+          </div>
+        </div>
+        {pendingNames && (
+          <div className="rounded-[1.2rem]" style={{ padding: '0.8rem 0.95rem', background: '#ffffff', border: '1px solid #fdba74' }}>
+            <p style={{ fontSize: '1rem', color: '#9a3412', lineHeight: 1.7 }}>
+              正在调用：{pendingNames}
+            </p>
+          </div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {resolved.map((tc, ti) => <ToolResultBlock key={ti} result={tc.result} />)}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-[1.6rem]" style={{ padding: '0.95rem', background: '#fff7ed', border: '1.5px solid #fed7aa' }}>
+      <div className="flex items-center gap-3" style={{ marginBottom: resolved.length > 0 || pending.length > 0 ? '0.75rem' : 0 }}>
+        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
+          <Bot size={18} />
+        </div>
+        <div>
+          <p style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111827' }}>顾问正在为您处理</p>
+          <p style={{ fontSize: '0.95rem', color: '#6b7280' }}>工具结果会按实际处理顺序显示在这里。</p>
+        </div>
+      </div>
+      {pendingNames && (
+        <div className="rounded-[1.2rem]" style={{ padding: '0.8rem 0.95rem', background: '#ffffff', border: '1px solid #fdba74', marginBottom: resolved.length > 0 ? '0.75rem' : 0 }}>
+          <p style={{ fontSize: '1rem', color: '#9a3412', lineHeight: 1.7 }}>
+            正在调用：{pendingNames}
+          </p>
+        </div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {resolved.map((tc, ti) => <ToolResultBlock key={ti} result={tc.result} />)}
+      </div>
+    </div>
+  );
+}
+
+function renderAssistantBlocks(blocks, loading, isLastGroup) {
+  return (
+    <div className="rounded-[1.5rem]" style={{ padding: '1rem 1.1rem', background: '#ffffff', border: '1px solid #e5e7eb', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+        {blocks.map((block, blockIndex) => {
+          const isText = (block.kind || 'text') === 'text';
+          const previousText = isText
+            ? blocks
+              .slice(0, blockIndex)
+              .filter(item => (item.kind || 'text') === 'text')
+              .map(item => item.content || '')
+              .join('')
+            : '';
+          const content = isText ? trimRepeatedLead(block.content || '', previousText) : '';
+          const isLastBlock = blockIndex === blocks.length - 1;
+          if (isText && !content && !(loading && isLastGroup && isLastBlock)) return null;
+          return isText ? (
+            <div key={`text-${blockIndex}`} style={{ fontSize: '1.18rem', lineHeight: 1.8, color: '#111827' }}>
+              {content ? (
+                <MarkdownRenderer content={content} />
+              ) : loading && isLastGroup && isLastBlock ? (
+                <div className="flex gap-1.5 py-1">
+                  <div className="w-2 h-2 bg-orange-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-2 h-2 bg-orange-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2 h-2 bg-orange-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <ToolTimelineBlock key={`tool-${blockIndex}`} block={block} embedded />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function trimRepeatedLead(currentText, previousText) {
+  const next = (currentText || '').trimStart();
+  const prev = (previousText || '').trim();
+  if (!next || !prev) return currentText;
+  if (!next.startsWith(prev)) return currentText;
+  const trimmed = next.slice(prev.length).trimStart();
+  return trimmed || currentText;
 }
 
 function BriefCard({ icon: Icon, title, value, subtitle, tone = 'warm' }) {
@@ -141,6 +248,18 @@ export default function ElderAdvisor() {
       tone: briefSnapshot?.risk?.level === 'attention' ? 'alert' : 'safe',
     },
   ];
+  const groupedMessages = [];
+  for (const msg of messages) {
+    const kind = msg.kind || 'text';
+    const sameTurn = msg.turnId && groupedMessages.length > 0 && groupedMessages[groupedMessages.length - 1].role === 'ai' && groupedMessages[groupedMessages.length - 1].turnId === msg.turnId;
+    if (msg.role === 'ai' && sameTurn) {
+      groupedMessages[groupedMessages.length - 1].blocks.push({ ...msg, kind });
+    } else if (msg.role === 'ai') {
+      groupedMessages.push({ role: 'ai', turnId: msg.turnId || `standalone-${groupedMessages.length}`, blocks: [{ ...msg, kind }] });
+    } else {
+      groupedMessages.push({ ...msg, kind });
+    }
+  }
 
   return (
     <div className="senior-ui" style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
@@ -271,34 +390,26 @@ export default function ElderAdvisor() {
 
         <div className="rounded-[1.6rem]" style={{ minHeight: '24rem', padding: '1rem', background: '#fffdf9', border: '1px solid #ffedd5' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {messages.map((m, i) => (
-              <div key={i} className={`flex items-start gap-3 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white flex-shrink-0" style={{ background: m.role === 'user' ? '#111827' : 'linear-gradient(135deg,#f97316,#ea580c)' }}>
-                  {m.role === 'user' ? <User size={20} /> : <Bot size={20} />}
+            {groupedMessages.map((m, i) => (
+              m.role === 'ai' ? (
+                <div key={`ai-${m.turnId || i}`} className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white flex-shrink-0" style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
+                    <Bot size={20} />
+                  </div>
+                  <div style={{ maxWidth: '86%', minWidth: 0 }}>
+                    {renderAssistantBlocks(m.blocks, loading, i === groupedMessages.length - 1)}
+                  </div>
                 </div>
-                <div style={{ maxWidth: '86%', minWidth: 0, padding: '1rem 1.1rem', borderRadius: '1.2rem', background: m.role === 'user' ? '#fff7ed' : '#ffffff', border: `1px solid ${m.role === 'user' ? '#fed7aa' : '#e5e7eb'}`, fontSize: '1.18rem', lineHeight: 1.8, color: '#111827', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                  {m.role === 'ai' ? (
-                    <div className="leading-relaxed [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_strong]:font-semibold [&_code]:bg-orange-50 [&_code]:px-1 [&_code]:rounded [&_code]:text-orange-600 [&_blockquote]:border-l-4 [&_blockquote]:border-orange-300 [&_blockquote]:pl-3 [&_blockquote]:italic">
-                      {m.tool_calls?.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: m.content ? '1rem' : 0 }}>
-                          {m.tool_calls.map((tc, ti) => <ToolResultBlock key={ti} result={tc.result} />)}
-                        </div>
-                      )}
-                      {m.content ? (
-                        <ReactMarkdown>{m.content || ''}</ReactMarkdown>
-                      ) : loading && i === messages.length - 1 ? (
-                        <div className="flex gap-1.5 py-1">
-                          <div className="w-2 h-2 bg-orange-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <div className="w-2 h-2 bg-orange-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <div className="w-2 h-2 bg-orange-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : (
+              ) : (
+                <div key={`user-${m.turnId || i}`} className="flex items-start gap-3 flex-row-reverse">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white flex-shrink-0" style={{ background: '#111827' }}>
+                    <User size={20} />
+                  </div>
+                  <div style={{ maxWidth: '86%', minWidth: 0, padding: '1rem 1.1rem', borderRadius: '1.2rem', background: '#fff7ed', border: '1px solid #fed7aa', fontSize: '1.18rem', lineHeight: 1.8, color: '#111827', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                     <span style={{ whiteSpace: 'pre-wrap' }}>{m.content}</span>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )
             ))}
             <div ref={msgEnd} />
           </div>

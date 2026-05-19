@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import { useLocation } from 'react-router-dom';
 import api from '../utils/api';
 import { useChatStream } from '../utils/useChatStream';
@@ -35,6 +35,99 @@ function ToolResultBlock({ result }) {
       </div>
     </div>
   );
+}
+
+function ToolTimelineBlock({ block, embedded = false }) {
+  const resolved = block.tool_calls || [];
+  const pending = block.pending_tool_calls || [];
+  const pendingNames = pending
+    .map(item => item?.function?.name)
+    .filter(Boolean)
+    .join('、');
+
+  if (resolved.length === 0 && pending.length === 0) return null;
+
+  if (embedded) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+            <Bot size={14} className="text-white" />
+          </div>
+          <span className="text-gray-500" style={{ fontSize: '0.95rem', fontWeight: 600 }}>MetaBank AI 正在处理</span>
+        </div>
+        {pendingNames && (
+          <div className="rounded-xl border border-orange-200 bg-white/80" style={{ padding: '0.75rem 0.9rem' }}>
+            <p style={{ fontSize: '0.95rem', color: '#9a3412', lineHeight: 1.6 }}>
+              正在调用：{pendingNames}
+            </p>
+          </div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {resolved.map((tc, ti) => <ToolResultBlock key={ti} result={tc.result} />)}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-orange-100 bg-orange-50/60" style={{ padding: '0.9rem 1rem' }}>
+      <div className="flex items-center gap-2" style={{ marginBottom: resolved.length > 0 || pending.length > 0 ? '0.75rem' : 0 }}>
+        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+          <Bot size={14} className="text-white" />
+        </div>
+        <span className="text-gray-500" style={{ fontSize: '0.95rem', fontWeight: 600 }}>MetaBank AI 正在处理</span>
+      </div>
+      {pendingNames && (
+        <div className="rounded-xl border border-orange-200 bg-white/80" style={{ padding: '0.75rem 0.9rem', marginBottom: resolved.length > 0 ? '0.75rem' : 0 }}>
+          <p style={{ fontSize: '0.95rem', color: '#9a3412', lineHeight: 1.6 }}>
+            正在调用：{pendingNames}
+          </p>
+        </div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {resolved.map((tc, ti) => <ToolResultBlock key={ti} result={tc.result} />)}
+      </div>
+    </div>
+  );
+}
+
+function renderAssistantBlocks(blocks, loading, isLastGroup) {
+  return (
+    <div className="rounded-2xl bg-gray-50 border border-gray-200 rounded-bl-md" style={{ padding: '1rem 1.25rem', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {blocks.map((block, blockIndex) => {
+          const isText = (block.kind || 'text') === 'text';
+          const previousText = isText
+            ? blocks
+              .slice(0, blockIndex)
+              .filter(item => (item.kind || 'text') === 'text')
+              .map(item => item.content || '')
+              .join('')
+            : '';
+          const content = isText ? trimRepeatedLead(block.content || '', previousText) : '';
+          const isLastBlock = blockIndex === blocks.length - 1;
+          if (isText && !content && !(loading && isLastGroup && isLastBlock)) return null;
+          return isText ? (
+            <div key={`text-${blockIndex}`} style={{ fontSize: '1.0625rem' }}>
+              {content ? <MarkdownRenderer content={content} /> : loading && isLastGroup && isLastBlock ? <div className="flex gap-1.5 py-1"><div className="w-2 h-2 bg-orange-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} /><div className="w-2 h-2 bg-orange-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} /><div className="w-2 h-2 bg-orange-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} /></div> : null}
+            </div>
+          ) : (
+            <ToolTimelineBlock key={`tool-${blockIndex}`} block={block} embedded />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function trimRepeatedLead(currentText, previousText) {
+  const next = (currentText || '').trimStart();
+  const prev = (previousText || '').trim();
+  if (!next || !prev) return currentText;
+  if (!next.startsWith(prev)) return currentText;
+  const trimmed = next.slice(prev.length).trimStart();
+  return trimmed || currentText;
 }
 
 export default function AIAssistant() {
@@ -116,6 +209,18 @@ export default function AIAssistant() {
     { icon: Zap, label: '买入GMAI', prompt: '帮我买入100份国脉AI概念股' },
     { icon: Timer, label: '设置定投', prompt: '设置每天定投GMAI 50份' },
   ];
+  const groupedMessages = [];
+  for (const msg of messages) {
+    const kind = msg.kind || 'text';
+    const sameTurn = msg.turnId && groupedMessages.length > 0 && groupedMessages[groupedMessages.length - 1].role === 'ai' && groupedMessages[groupedMessages.length - 1].turnId === msg.turnId;
+    if (msg.role === 'ai' && sameTurn) {
+      groupedMessages[groupedMessages.length - 1].blocks.push({ ...msg, kind });
+    } else if (msg.role === 'ai') {
+      groupedMessages.push({ role: 'ai', turnId: msg.turnId || `standalone-${groupedMessages.length}`, blocks: [{ ...msg, kind }] });
+    } else {
+      groupedMessages.push({ ...msg, kind });
+    }
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
@@ -158,22 +263,38 @@ export default function AIAssistant() {
             {quickPrompts.map((q, i) => <button key={i} onClick={() => setInput(q.prompt)} className="flex items-center gap-2 rounded-full bg-gray-50 border border-gray-200 text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all" style={{ padding: '0.5rem 1rem', fontSize: '1rem' }}><q.icon size={16} className="flex-shrink-0" /><span className="truncate">{q.label}</span></button>)}
           </div>
           <div className="flex-1 card overflow-y-auto" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className="max-w-2xl">
-                  {m.role === 'ai' && (
+            {groupedMessages.map((m, i) => (
+              m.role === 'ai' ? (
+                <div key={`ai-${m.turnId || i}`} className="flex justify-start">
+                  <div className="max-w-2xl w-full">
                     <div className="flex items-center gap-2 mb-1.5">
                       <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center"><Bot size={14} className="text-white" /></div>
                       <span className="text-gray-400">MetaBank AI</span>
-                      {m.tool_calls?.length > 0 && <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/10 text-green-400">工具调用 {m.tool_calls.length}</span>}
-                      <button onClick={() => speaking ? stop() : speak(m.content || '')} className="ml-1 p-1 rounded-lg hover:bg-orange-50 transition-all" style={{ color: speaking ? '#ef4444' : '#9ca3af' }} title={speaking ? '停止朗读' : '朗读此回复'}>{speaking ? <Square size={14} /> : <Volume2 size={14} />}</button>
+                      <button
+                        onClick={() => {
+                          const textToSpeak = m.blocks.filter(block => (block.kind || 'text') === 'text').map(block => block.content || '').join('\n').trim();
+                          if (!textToSpeak) return;
+                          speaking ? stop() : speak(textToSpeak);
+                        }}
+                        className="ml-1 p-1 rounded-lg hover:bg-orange-50 transition-all"
+                        style={{ color: speaking ? '#ef4444' : '#9ca3af' }}
+                        title={speaking ? '停止朗读' : '朗读此回复'}
+                      >
+                        {speaking ? <Square size={14} /> : <Volume2 size={14} />}
+                      </button>
                     </div>
-                  )}
-                  <div className={`rounded-2xl ${m.role === 'user' ? 'bg-orange-50 border border-orange-100 rounded-br-md' : 'bg-gray-50 border border-gray-200 rounded-bl-md'}`} style={{ padding: '1rem 1.25rem', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                    {m.role === 'ai' ? <div className="leading-relaxed [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_strong]:font-semibold [&_code]:bg-gray-200 [&_code]:px-1 [&_code]:rounded [&_code]:text-orange-600 [&_pre]:bg-gray-100 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:text-sm [&_h1]:text-xl [&_h2]:text-lg [&_h3]:text-base [&_blockquote]:border-l-4 [&_blockquote]:border-orange-300 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-gray-600" style={{ fontSize: '1.0625rem' }}>{m.tool_calls?.length > 0 && <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: m.content ? '1rem' : 0 }}>{m.tool_calls.map((tc, ti) => <ToolResultBlock key={ti} result={tc.result} />)}</div>}{m.content ? <ReactMarkdown>{m.content}</ReactMarkdown> : loading && i === messages.length - 1 ? <div className="flex gap-1.5 py-1"><div className="w-2 h-2 bg-orange-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} /><div className="w-2 h-2 bg-orange-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} /><div className="w-2 h-2 bg-orange-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} /></div> : null}</div> : <div className="whitespace-pre-wrap" style={{ fontSize: '1.0625rem' }}>{m.content}</div>}
+                    {renderAssistantBlocks(m.blocks, loading, i === groupedMessages.length - 1)}
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div key={`user-${m.turnId || i}`} className="flex justify-end">
+                  <div className="max-w-2xl">
+                    <div className="rounded-2xl bg-orange-50 border border-orange-100 rounded-br-md" style={{ padding: '1rem 1.25rem', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                      <div className="whitespace-pre-wrap" style={{ fontSize: '1.0625rem' }}>{m.content}</div>
+                    </div>
+                  </div>
+                </div>
+              )
             ))}
             <div ref={msgEnd} />
           </div>

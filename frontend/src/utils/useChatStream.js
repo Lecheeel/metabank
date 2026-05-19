@@ -30,7 +30,7 @@ export function useChatStream({ mode = null, instructions = null, autoSpeakFirst
     if (idx >= 0 && draftMessages[idx]?.role === 'ai' && (draftMessages[idx].kind || 'text') === 'text') {
       return idx;
     }
-    draftMessages.push({ role: 'ai', kind: 'text', content: '' });
+    draftMessages.push({ role: 'ai', kind: 'text', content: '', turnId: activeTurnIdRef.current });
     const nextIdx = draftMessages.length - 1;
     currentTextBlockIndexRef.current = nextIdx;
     currentTextBlockContentRef.current = '';
@@ -57,11 +57,14 @@ export function useChatStream({ mode = null, instructions = null, autoSpeakFirst
   }, []);
 
   const closeSocket = useCallback(() => {
-    if (wsRef.current) {
-      try { wsRef.current.close(); } catch {
-        // Ignore close failures during teardown.
-      }
-      wsRef.current = null;
+    const ws = wsRef.current;
+    wsRef.current = null;
+    if (!ws) return;
+    if (ws.readyState === WebSocket.CONNECTING) return;
+    try {
+      ws.close();
+    } catch {
+      // Ignore close failures during teardown.
     }
   }, []);
 
@@ -81,124 +84,175 @@ export function useChatStream({ mode = null, instructions = null, autoSpeakFirst
   useEffect(() => {
     routeActiveRef.current = isActive;
     if (!isActive) {
-      interrupt();
-      closeSocket();
+      const disconnectTimer = window.setTimeout(() => {
+        interrupt();
+        closeSocket();
+      }, 0);
+      return () => window.clearTimeout(disconnectTimer);
     }
   }, [closeSocket, interrupt, isActive]);
 
   useEffect(() => {
     if (!isActive) return;
-    const ws = new WebSocket(WS_URL());
-    wsRef.current = ws;
-    setStatus('connecting');
 
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'set_mode', mode }));
-      setStatus('ready');
-      setError('');
-    };
+    let cancelled = false;
+    let ws = null;
+    const connectTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      setStatus('connecting');
+      ws = new WebSocket(WS_URL());
+      wsRef.current = ws;
 
-    ws.onmessage = (e) => {
-      let msg;
-      try { msg = JSON.parse(e.data); } catch { return; }
-      if (!routeActiveRef.current) return;
-      if (msg.turn_id && activeTurnIdRef.current && msg.turn_id !== activeTurnIdRef.current) return;
-
-      if (msg.type === 'ready') {
-        setStatus('ready');
-      } else if (msg.type === 'delta') {
-        currentTextBlockContentRef.current += msg.content || '';
-        currentTurnTextRef.current += msg.content || '';
-        setMessages(prev => {
-          const next = [...prev];
-          const idx = ensureAssistantTextBlock(next);
-          next[idx] = { ...next[idx], content: currentTextBlockContentRef.current };
-          return next;
-        });
-      } else if (msg.type === 'tool_calls') {
-        const calls = msg.tool_calls || [];
-        setToolCalls(calls);
-        setMessages(prev => {
-          const next = [...prev];
-          const textIdx = currentTextBlockIndexRef.current;
-          if (
-            textIdx >= 0 &&
-            next[textIdx]?.role === 'ai' &&
-            (next[textIdx].kind || 'text') === 'text' &&
-            !((next[textIdx].content || '').trim())
-          ) {
-            next.splice(textIdx, 1);
-            currentTextBlockIndexRef.current = -1;
-            currentTextBlockContentRef.current = '';
+      ws.onopen = () => {
+        if (cancelled || !routeActiveRef.current || wsRef.current !== ws) {
+          try { ws.close(); } catch {
+            // Ignore stale socket close failures.
           }
-          next.push({
-            role: 'ai',
-            kind: 'tool',
-            tool_calls: [],
-            pending_tool_calls: calls,
+          return;
+        }
+        ws.send(JSON.stringify({ type: 'set_mode', mode }));
+        setStatus('ready');
+        setError('');
+      };
+
+      ws.onmessage = (e) => {
+        if (cancelled || !routeActiveRef.current || wsRef.current !== ws) return;
+        let msg;
+        try { msg = JSON.parse(e.data); } catch { return; }
+        if (msg.turn_id && activeTurnIdRef.current && msg.turn_id !== activeTurnIdRef.current) return;
+
+        if (msg.type === 'ready') {
+          setStatus('ready');
+        } else if (msg.type === 'delta') {
+          currentTextBlockContentRef.current += msg.content || '';
+          currentTurnTextRef.current += msg.content || '';
+          setMessages(prev => {
+            const next = [...prev];
+            const idx = ensureAssistantTextBlock(next);
+            next[idx] = { ...next[idx], content: currentTextBlockContentRef.current };
+            return next;
           });
-          currentToolBlockIndexRef.current = next.length - 1;
-          currentTextBlockIndexRef.current = -1;
-          currentTextBlockContentRef.current = '';
-          return next;
-        });
-      } else if (msg.type === 'tool_result') {
-        setMessages(prev => {
-          const next = [...prev];
-          const idx = currentToolBlockIndexRef.current;
-          if (idx >= 0 && next[idx]?.role === 'ai' && next[idx].kind === 'tool') {
-            next[idx] = appendToolResultToBlock(next[idx], msg.tool_call);
-          } else {
+        } else if (msg.type === 'tool_calls') {
+          const calls = msg.tool_calls || [];
+          setToolCalls(calls);
+          setMessages(prev => {
+            const next = [...prev];
+            const textIdx = currentTextBlockIndexRef.current;
+            if (
+              textIdx >= 0 &&
+              next[textIdx]?.role === 'ai' &&
+              (next[textIdx].kind || 'text') === 'text' &&
+              !((next[textIdx].content || '').trim())
+            ) {
+              next.splice(textIdx, 1);
+              currentTextBlockIndexRef.current = -1;
+              currentTextBlockContentRef.current = '';
+            }
             next.push({
               role: 'ai',
               kind: 'tool',
-              tool_calls: [msg.tool_call],
-              pending_tool_calls: [],
+              tool_calls: [],
+              pending_tool_calls: calls,
+              turnId: activeTurnIdRef.current,
             });
             currentToolBlockIndexRef.current = next.length - 1;
+            currentTextBlockIndexRef.current = -1;
+            currentTextBlockContentRef.current = '';
+            return next;
+          });
+        } else if (msg.type === 'tool_result') {
+          setMessages(prev => {
+            const next = [...prev];
+            const idx = currentToolBlockIndexRef.current;
+            if (idx >= 0 && next[idx]?.role === 'ai' && next[idx].kind === 'tool') {
+              next[idx] = appendToolResultToBlock(next[idx], msg.tool_call);
+            } else {
+              next.push({
+                role: 'ai',
+                kind: 'tool',
+                tool_calls: [msg.tool_call],
+                pending_tool_calls: [],
+                turnId: activeTurnIdRef.current,
+              });
+              currentToolBlockIndexRef.current = next.length - 1;
+            }
+            return next;
+          });
+        } else if (msg.type === 'done') {
+          const turnId = activeTurnIdRef.current || msg.turn_id || null;
+          const finalText = (msg.content || '').trim();
+          if (finalText) {
+            if (!currentTurnTextRef.current) {
+              currentTurnTextRef.current = finalText;
+            }
+            setMessages(prev => {
+              const next = [...prev];
+              const idx = currentTextBlockIndexRef.current;
+              if (
+                idx >= 0 &&
+                next[idx]?.role === 'ai' &&
+                (next[idx].kind || 'text') === 'text'
+              ) {
+                next[idx] = { ...next[idx], content: finalText, turnId: next[idx].turnId || turnId };
+              } else {
+                next.push({
+                  role: 'ai',
+                  kind: 'text',
+                  content: finalText,
+                  turnId,
+                });
+                currentTextBlockIndexRef.current = next.length - 1;
+              }
+              return next;
+            });
+            currentTextBlockContentRef.current = finalText;
           }
-          return next;
-        });
-      } else if (msg.type === 'done') {
-        setLoading(false);
-        setStatus('ready');
-        if (!msg.turn_id || msg.turn_id === activeTurnIdRef.current) {
-          activeTurnIdRef.current = null;
+          setLoading(false);
+          setStatus('ready');
+          if (!msg.turn_id || msg.turn_id === activeTurnIdRef.current) {
+            activeTurnIdRef.current = null;
+          }
+          const replyText = currentTurnTextRef.current || finalText || '';
+          if (autoSpeakFirst && routeActiveRef.current && replyText.trim()) {
+            void speak(replyText);
+          }
+        } else if (msg.type === 'interrupted') {
+          setLoading(false);
+          setStatus('ready');
+          if (!msg.turn_id || msg.turn_id === activeTurnIdRef.current) {
+            activeTurnIdRef.current = null;
+          }
+        } else if (msg.type === 'error') {
+          setError(msg.message || '发生错误');
+          setStatus('ready');
+          setLoading(false);
         }
-        const replyText = currentTurnTextRef.current || msg.content || '';
-        if (autoSpeakFirst && routeActiveRef.current && replyText.trim()) {
-          void speak(replyText);
-        }
-      } else if (msg.type === 'interrupted') {
-        setLoading(false);
-        setStatus('ready');
-        if (!msg.turn_id || msg.turn_id === activeTurnIdRef.current) {
-          activeTurnIdRef.current = null;
-        }
-      } else if (msg.type === 'error') {
-        setError(msg.message || '发生错误');
-        setStatus('ready');
-        setLoading(false);
-      }
-    };
+      };
 
-    ws.onerror = () => {
-      setError('流式对话连接失败');
-      setStatus('error');
-      setLoading(false);
-    };
-
-    ws.onclose = () => {
-      if (routeActiveRef.current) {
-        setStatus('idle');
+      ws.onerror = () => {
+        if (cancelled || !routeActiveRef.current || wsRef.current !== ws) return;
+        setError('流式对话连接失败');
+        setStatus('error');
         setLoading(false);
-      }
-    };
+      };
+
+      ws.onclose = () => {
+        if (wsRef.current === ws) {
+          wsRef.current = null;
+        }
+        if (!cancelled && routeActiveRef.current) {
+          setStatus('idle');
+          setLoading(false);
+        }
+      };
+    }, 0);
 
     return () => {
-      ws.close();
+      cancelled = true;
+      clearTimeout(connectTimer);
+      closeSocket();
     };
-  }, [autoSpeakFirst, isActive, mode, speak]);
+  }, [appendToolResultToBlock, autoSpeakFirst, closeSocket, ensureAssistantTextBlock, isActive, mode, speak]);
 
   useEffect(() => {
     if (!isActive || !autoSpeakFirst) return;
@@ -230,12 +284,12 @@ export function useChatStream({ mode = null, instructions = null, autoSpeakFirst
     setLoading(true);
     setError('');
     setMessages(prev => {
-      const next = [...prev, { role: 'user', content: text }];
+      const next = [...prev, { role: 'user', content: text, turnId: turn_id }];
       currentTextBlockIndexRef.current = next.length;
       currentTextBlockContentRef.current = '';
       currentToolBlockIndexRef.current = -1;
       currentTurnTextRef.current = '';
-      return [...next, { role: 'ai', kind: 'text', content: '' }];
+      return [...next, { role: 'ai', kind: 'text', content: '', turnId: turn_id }];
     });
     activeTurnIdRef.current = turn_id;
     wsRef.current.send(JSON.stringify({ type: 'message', content: text, mode, turn_id }));
