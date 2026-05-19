@@ -43,3 +43,13 @@ def require_admin(user=Depends(get_current_user)):
     if not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="需要管理员权限")
     return user
+
+def decode_jwt_token(token: str):
+    """从 raw token 解码 payload。供 WebSocket 等非 Header 场景使用。失败抛 ValueError。"""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if not payload.get("sub"):
+            raise ValueError("missing sub")
+        return payload
+    except JWTError as e:
+        raise ValueError(str(e))

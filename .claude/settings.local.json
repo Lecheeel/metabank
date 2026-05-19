@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir C:\\\\Users\\\\ryanc\\\\Desktop\\\\metabank\\\\metabank *)",
+      "Bash(dir \"C:\\\\Users\\\\ryanc\\\\Desktop\\\\metabank\\\\metabank\\\\backend\\\\routes\")",
+      "Bash(dir \"C:\\\\Users\\\\ryanc\\\\Desktop\\\\metabank\\\\metabank\\\\frontend\\\\src\")",
+      "Bash(dir \"C:\\\\Users\\\\ryanc\\\\Desktop\\\\metabank\\\\metabank\\\\frontend\\\\src\\\\pages\")",
+      "Bash(dir \"C:\\\\Users\\\\ryanc\\\\Desktop\\\\metabank\\\\metabank\\\\frontend\\\\src\\\\components\")",
+      "Bash(dir C:\\\\Users\\\\ryanc\\\\Desktop\\\\metabank\\\\metabank\\\\docs\\\\latex *)"
+    ]
+  }
+}

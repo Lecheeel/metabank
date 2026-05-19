@@ -1,10 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from storage import read_json, write_json, find_one, update_json, append_json
 from auth_utils import get_current_user
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
-import uuid, random, math, hashlib
+import uuid, asyncio
+from . import market_model
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+import guardian_utils
 
 router = APIRouter()
 
@@ -17,39 +21,11 @@ STOCKS = [
     {"symbol": "AIFIN", "name": "AI金融ETF", "code": "AI-FIN", "base_price": 50.0, "category": "ai_stock", "description": "AI金融科技ETF基金"},
 ]
 
-def _generate_kline(base_price, days=90):
-    data = []
-    price = base_price
-    now = datetime.now()
-    for i in range(days, 0, -1):
-        dt = now - timedelta(days=i)
-        change = random.gauss(0, 0.02) * price
-        open_p = price
-        close_p = price + change
-        high = max(open_p, close_p) * (1 + random.random() * 0.015)
-        low = min(open_p, close_p) * (1 - random.random() * 0.015)
-        volume = random.randint(10000, 500000)
-        data.append({
-            "date": dt.strftime("%Y-%m-%d"),
-            "open": round(open_p, 4),
-            "close": round(close_p, 4),
-            "high": round(high, 4),
-            "low": round(low, 4),
-            "volume": volume
-        })
-        price = close_p
-    return data
+def _generate_kline(symbol, days=90):
+    return market_model.simulate_price_path(symbol, days=days)
 
 def _get_current_price(symbol):
-    s = next((s for s in STOCKS if s["symbol"] == symbol), None)
-    if not s:
-        return None
-    seed = int(hashlib.md5((symbol + datetime.now().strftime("%Y%m%d%H%M")).encode()).hexdigest()[:8], 16)
-    random.seed(seed)
-    fluctuation = random.gauss(0, 0.03)
-    random.seed()
-    price = s["base_price"] * (1 + fluctuation)
-    return round(price, 4)
+    return market_model.get_current_price(symbol)
 
 class TradeReq(BaseModel):
     symbol: str
@@ -74,7 +50,7 @@ def get_kline(symbol: str, days: int = 90):
     s = next((s for s in STOCKS if s["symbol"] == symbol), None)
     if not s:
         raise HTTPException(404, "标的不存在")
-    return {"symbol": symbol, "name": s["name"], "data": _generate_kline(s["base_price"], days)}
+    return {"symbol": symbol, "name": s["name"], "data": _generate_kline(symbol, days)}
 
 @router.post("/trade")
 def trade(req: TradeReq, user=Depends(get_current_user)):
@@ -83,16 +59,39 @@ def trade(req: TradeReq, user=Depends(get_current_user)):
         raise HTTPException(404, "标的不存在")
 
     price = req.price or _get_current_price(req.symbol)
-    total_cost = price * req.amount
+    total_cost = round(price * req.amount, 4)
     buyer = find_one("users.json", "username", user["sub"])
 
-    if req.action == "buy":
+    # 监护拦截
+    if guardian_utils.check_needs_approval(buyer, total_cost):
+        approval = guardian_utils.create_pending_approval(
+            buyer, "trade",
+            {"symbol": req.symbol, "action": req.action, "amount": req.amount, "price": price},
+            total_cost,
+        )
+        return {
+            "status": "pending_approval",
+            "approval_id": approval["id"],
+            "message": f"交易金额 {total_cost} GMC 超过大额阈值，已通知监护人审批",
+        }
+
+    return _do_trade(buyer, req.symbol, req.action, req.amount, price)
+
+
+def _do_trade(buyer: dict, symbol: str, action: str, amount: float, price: float) -> dict:
+    """执行实际交易（供直接调用与审批后回调）。"""
+    s = next((s for s in STOCKS if s["symbol"] == symbol), None)
+    if not s:
+        raise HTTPException(404, "标的不存在")
+    total_cost = round(price * amount, 4)
+
+    if action == "buy":
         if buyer["balance"] < total_cost:
             raise HTTPException(400, "国脉币余额不足")
         update_json("users.json", "id", buyer["id"], {"balance": round(buyer["balance"] - total_cost, 4)})
-    elif req.action == "sell":
-        holdings = _get_holdings(buyer["id"], req.symbol)
-        if holdings < req.amount:
+    elif action == "sell":
+        holdings = _get_holdings(buyer["id"], symbol)
+        if holdings < amount:
             raise HTTPException(400, "持仓不足")
         update_json("users.json", "id", buyer["id"], {"balance": round(buyer["balance"] + total_cost, 4)})
     else:
@@ -102,10 +101,10 @@ def trade(req: TradeReq, user=Depends(get_current_user)):
         "id": str(uuid.uuid4()),
         "user_id": buyer["id"],
         "username": buyer["username"],
-        "symbol": req.symbol,
+        "symbol": symbol,
         "name": s["name"],
-        "action": req.action,
-        "amount": req.amount,
+        "action": action,
+        "amount": amount,
         "price": price,
         "total": total_cost,
         "created_at": datetime.now().isoformat()
@@ -117,20 +116,20 @@ def trade(req: TradeReq, user=Depends(get_current_user)):
     txn = {
         "id": str(uuid.uuid4()),
         "type": "trade",
-        "from_address": buyer["wallet_address"] if req.action == "buy" else "0xGM_EXCHANGE",
-        "from_name": buyer["nickname"] if req.action == "buy" else "MetaBank交易所",
-        "to_address": "0xGM_EXCHANGE" if req.action == "buy" else buyer["wallet_address"],
-        "to_name": "MetaBank交易所" if req.action == "buy" else buyer["nickname"],
+        "from_address": buyer["wallet_address"] if action == "buy" else "0xGM_EXCHANGE",
+        "from_name": buyer["nickname"] if action == "buy" else "MetaBank交易所",
+        "to_address": "0xGM_EXCHANGE" if action == "buy" else buyer["wallet_address"],
+        "to_name": "MetaBank交易所" if action == "buy" else buyer["nickname"],
         "amount": total_cost,
-        "note": f"{'买入' if req.action == 'buy' else '卖出'} {s['name']} {req.amount}份 @{price}",
+        "note": f"{'买入' if action == 'buy' else '卖出'} {s['name']} {amount}份 @{price}",
         "created_at": datetime.now().isoformat()
     }
     append_json("transactions.json", txn)
 
     return {
-        "message": f"{'买入' if req.action == 'buy' else '卖出'}成功",
+        "message": f"{'买入' if action == 'buy' else '卖出'}成功",
         "trade": trade_record,
-        "new_balance": round(buyer["balance"] + (-total_cost if req.action == "buy" else total_cost), 4)
+        "new_balance": round(buyer["balance"] + (-total_cost if action == "buy" else total_cost), 4)
     }
 
 def _get_holdings(user_id, symbol):
@@ -187,3 +186,42 @@ def trade_history(user=Depends(get_current_user)):
     user_trades = [t for t in market if t["user_id"] == buyer["id"]]
     user_trades.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     return user_trades[:100]
+
+
+@router.get("/macro")
+def get_macro():
+    """返回当前宏观因子快照（CPI / AI 热度 / 黄金溢价 / 市场情绪）。"""
+    return market_model.get_macro_factors()
+
+
+@router.get("/asset_profiles")
+def get_asset_profiles():
+    """返回各标的的差异化参数（μ_base, σ, λ, β 系数等），供前端/文档展示。"""
+    return [
+        {
+            "symbol": p.symbol,
+            "base_price": p.base_price,
+            "mu_base": p.mu_base,
+            "sigma": p.sigma,
+            "jump_lambda": p.jump_lambda,
+            "beta_cpi": p.beta_cpi,
+            "beta_ai": p.beta_ai,
+            "beta_gold": p.beta_gold,
+            "beta_sentiment": p.beta_sentiment,
+        }
+        for p in market_model.list_asset_profiles()
+    ]
+
+
+@router.websocket("/ws/macro")
+async def ws_macro(ws: WebSocket):
+    """每 5 秒推送一次宏观因子快照。"""
+    await ws.accept()
+    try:
+        while True:
+            await ws.send_json(market_model.get_macro_factors())
+            await asyncio.sleep(5)
+    except WebSocketDisconnect:
+        return
+    except Exception:
+        return

@@ -1,16 +1,17 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect, Query
 from pydantic import BaseModel
 from storage import read_json, append_json, find_one, update_json, write_json, read_settings
-from auth_utils import get_current_user
+from auth_utils import get_current_user, decode_jwt_token
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
-import uuid, random, re, os, traceback, hashlib
+import uuid, random, re, os, traceback, hashlib, json, threading, asyncio
 
 router = APIRouter()
 
 class ChatReq(BaseModel):
     message: str
     api_key: Optional[str] = None
+    mode: Optional[str] = None
 
 class AutoTaskReq(BaseModel):
     symbol: str
@@ -40,6 +41,7 @@ STOCKS_INFO = [
 ]
 
 DEFAULT_API_KEY = "sk-462e7320be3d4608bca013c7fdd6d18b"
+DEFAULT_LLM_MODEL = "qwen3.6-flash"
 
 # 工具定义：供 Qwen 模型在用户有相应需求时调用
 LLM_TOOLS = [
@@ -285,6 +287,13 @@ def _execute_tool(name: str, arguments: dict, user_data: dict) -> Dict[str, Any]
         return {"tool": name, "label": "工具执行", "success": False, "error": str(e)}
     return {"tool": name, "label": "未知工具", "success": False, "error": "未知工具"}
 
+
+def _send_ws_json(loop, ws, payload: Dict[str, Any]):
+    try:
+        asyncio.run_coroutine_threadsafe(ws.send_json(payload), loop)
+    except Exception:
+        pass
+
 def _get_api_key(user_key: Optional[str] = None) -> Optional[str]:
     if user_key:
         return user_key
@@ -294,7 +303,7 @@ def _get_api_key(user_key: Optional[str] = None) -> Optional[str]:
         return key
     return os.environ.get("DASHSCOPE_API_KEY") or DEFAULT_API_KEY
 
-def _build_system_prompt(user_data: dict) -> str:
+def _build_system_prompt(user_data: dict, mode: Optional[str] = None) -> str:
     settings = read_settings()
     custom_prompt = settings.get("llm_system_prompt", "")
 
@@ -303,7 +312,7 @@ def _build_system_prompt(user_data: dict) -> str:
         insight = MARKET_INSIGHTS.get(s["symbol"], {})
         market_lines.append(f"  - {s['name']}({s['symbol']}, 代码{s['code']}): 基准价{s['base_price']}, 趋势{insight.get('trend','震荡')}, 支撑{insight.get('support','N/A')}, 阻力{insight.get('resistance','N/A')}")
 
-    return f"""你是 MetaBank AI 智能助手，一个基于元宇宙技术构建的金融养老社区平台的AI顾问。
+    base_prompt = f"""你是 MetaBank AI 智能助手，一个基于元宇宙技术构建的金融养老社区平台的AI顾问。
 MetaBank 由国脉科技股份有限公司（深交所: 002093）技术支持，总部位于福州市马尾区。
 
 当前用户信息：
@@ -338,7 +347,21 @@ MetaBank 由国脉科技股份有限公司（深交所: 002093）技术支持，
 - 查看某人最近在干嘛、发了什么动态、社区动态 → get_user_activity（参数：nickname，如老张头、王阿姨）
 {f'附加指令：{custom_prompt}' if custom_prompt else ''}"""
 
-def _call_dashscope(message: str, user_data: dict, api_key: str):
+    if mode == "elder":
+        base_prompt += """
+
+【老年专属理财顾问模式】
+- 你现在服务的是老年用户，目标是把复杂金融问题讲得足够慢、足够清楚、足够稳妥。
+- 优先推荐低风险、稳健、易理解的方案，不主动推荐期货、杠杆、短线投机、高波动产品。
+- 回复尽量分成短句和短段，避免术语堆积；如果必须提专业词，先用一句大白话解释。
+- 对金额、收益、风险、锁仓、波动等内容要说清楚“可能涨也可能跌”，不能制造保本承诺。
+- 如果用户表达焦虑、听不懂、年纪大、动作慢，要保持耐心，重复关键结论时换更简单的说法。
+- 如果用户要求高风险操作，先明确风险，再给出更稳健替代方案。
+"""
+
+    return base_prompt
+
+def _call_dashscope(message: str, user_data: dict, api_key: str, mode: Optional[str] = None):
     """调用 DashScope API，支持工具调用，返回 (回复文本, 工具调用列表)"""
     from openai import OpenAI
     import json
@@ -349,9 +372,9 @@ def _call_dashscope(message: str, user_data: dict, api_key: str):
     )
 
     settings = read_settings()
-    model = settings.get("llm_model", "qwen3.5-flash")
+    model = settings.get("llm_model", DEFAULT_LLM_MODEL)
 
-    system_prompt = _build_system_prompt(user_data)
+    system_prompt = _build_system_prompt(user_data, mode=mode)
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -529,6 +552,211 @@ def _generate_fallback_response(message: str, user_data: dict) -> str:
 在管理后台「系统设置」中可配置 API Key。"""
 
 
+def _parse_datetime(value: Optional[str]) -> datetime:
+    if not value:
+        return datetime.min
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return datetime.min
+
+
+def _format_datetime(value: Optional[str]) -> str:
+    dt = _parse_datetime(value)
+    if dt == datetime.min:
+        return "最近"
+    return dt.strftime("%m月%d日 %H:%M")
+
+
+def _build_transaction_brief(user_data: dict) -> Dict[str, Any]:
+    wallet = user_data.get("wallet_address", "")
+    transactions = read_json("transactions.json")
+    related = [t for t in transactions if t.get("from_address") == wallet or t.get("to_address") == wallet]
+    related.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    latest = related[0] if related else None
+    if not latest:
+        return {
+            "has_transaction": False,
+            "summary": "最近没有新的资金变动。",
+        }
+
+    is_outgoing = latest.get("from_address") == wallet
+    direction = "支出" if is_outgoing else "收入"
+    if latest.get("type") == "trade":
+        direction = "买入支出" if is_outgoing else "卖出回款"
+    elif latest.get("type") in {"purchase", "order"}:
+        direction = "消费支出"
+
+    amount = float(latest.get("amount", 0) or 0)
+    note = latest.get("note", "无备注")
+    happened_at = latest.get("created_at", "")
+    summary = f"{_format_datetime(happened_at)}，您有一笔{direction}，金额 {amount:.2f} GMC，内容是：{note}。"
+    return {
+        "has_transaction": True,
+        "direction": direction,
+        "amount": amount,
+        "note": note,
+        "created_at": happened_at,
+        "summary": summary,
+    }
+
+
+def _build_family_brief(user_data: dict) -> Dict[str, Any]:
+    posts = read_json("community_posts.json")
+    posts.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    guardian_nicknames = [g.get("nickname") for g in user_data.get("guardians", []) if g.get("nickname")]
+
+    if guardian_nicknames:
+        matched = [p for p in posts if p.get("nickname") in guardian_nicknames]
+        if matched:
+            post = matched[0]
+            summary = f"{post.get('nickname', '家人')}在{_format_datetime(post.get('created_at'))}分享了动态：{post.get('content', '')}"
+            return {
+                "source": "guardian",
+                "nickname": post.get("nickname", ""),
+                "content": post.get("content", ""),
+                "created_at": post.get("created_at", ""),
+                "summary": summary,
+            }
+
+    community_post = next((p for p in posts if p.get("nickname") and p.get("nickname") != user_data.get("nickname")), None)
+    if community_post:
+        summary = f"社区里，{community_post.get('nickname', '邻里朋友')}在{_format_datetime(community_post.get('created_at'))}分享了动态：{community_post.get('content', '')}"
+        return {
+            "source": "community",
+            "nickname": community_post.get("nickname", ""),
+            "content": community_post.get("content", ""),
+            "created_at": community_post.get("created_at", ""),
+            "summary": summary,
+        }
+
+    return {
+        "source": "none",
+        "summary": "今天暂时没有新的家人或社区动态。",
+    }
+
+
+def _build_risk_brief(user_data: dict, transaction_brief: Dict[str, Any]) -> Dict[str, Any]:
+    balance = float(user_data.get("balance", 0) or 0)
+    daily_limit = float(user_data.get("daily_limit", 5000.0) or 5000.0)
+    latest_note = transaction_brief.get("note", "")
+    latest_amount = float(transaction_brief.get("amount", 0) or 0)
+
+    if transaction_brief.get("has_transaction") and latest_amount >= daily_limit:
+        return {
+            "level": "attention",
+            "summary": f"您最近一笔资金变动超过了 {daily_limit:.0f} GMC，金额较大，后续操作建议再确认一次。",
+        }
+    if "期货" in latest_note or "元宇宙指数" in latest_note:
+        return {
+            "level": "attention",
+            "summary": "您最近接触的标的波动可能较大，今天建议以稳健为主，不要连续追高。",
+        }
+    if "国脉AI概念" in latest_note and latest_amount >= max(500.0, balance * 0.15):
+        return {
+            "level": "attention",
+            "summary": "AI 概念类标的波动较快，如果您还想继续操作，建议先分批，不要一次投入过多。",
+        }
+    if balance < 1000:
+        return {
+            "level": "attention",
+            "summary": "您当前可用国脉币不多，今天更适合先看清楚，再决定要不要继续消费或投资。",
+        }
+    return {
+        "level": "calm",
+        "summary": "今天账户整体比较平稳，建议继续以低风险、看得懂的产品为主。",
+    }
+
+
+def _build_elder_brief_payload(user_data: dict) -> Dict[str, Any]:
+    transaction_brief = _build_transaction_brief(user_data)
+    family_brief = _build_family_brief(user_data)
+    risk_brief = _build_risk_brief(user_data, transaction_brief)
+    return {
+        "nickname": user_data.get("nickname", "用户"),
+        "balance": float(user_data.get("balance", 0) or 0),
+        "wallet_address": user_data.get("wallet_address", ""),
+        "daily_limit": float(user_data.get("daily_limit", 5000.0) or 5000.0),
+        "transaction": transaction_brief,
+        "family_update": family_brief,
+        "risk": risk_brief,
+        "generated_at": datetime.now().isoformat(),
+    }
+
+
+def _generate_elder_brief_fallback(user_data: dict, brief_data: Dict[str, Any]) -> str:
+    transaction_summary = brief_data["transaction"]["summary"]
+    family_summary = brief_data["family_update"]["summary"]
+    risk_summary = brief_data["risk"]["summary"]
+    return (
+        f"🌞 您好，{user_data.get('nickname', '朋友')}，现在为您播报今天的账户情况。\n\n"
+        f"💰 您当前的国脉币余额是 {brief_data['balance']:.2f} GMC。\n"
+        f"{transaction_summary}\n\n"
+        f"👪 {family_summary}\n\n"
+        f"🛡️ {risk_summary}\n"
+        f"如果您愿意，我也可以继续为您慢慢解释每一项内容。"
+    )
+
+
+def _call_dashscope_elder_brief(user_data: dict, brief_data: Dict[str, Any], api_key: str) -> str:
+    from openai import OpenAI
+
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+    )
+    settings = read_settings()
+    model = settings.get("llm_model", DEFAULT_LLM_MODEL)
+
+    system_prompt = """你是 MetaBank 的老年理财顾问。请根据提供的真实数据，生成一段适合长者收听的“今日播报”。
+
+要求：
+- 严格围绕提供的数据，不得编造。
+- 语气温和、清楚、自然，像家人般提醒。
+- 输出 4 个短段：问候、余额与最近资金变化、家人或社区动态、风险提醒。
+- 每段 1 到 2 句，总体简洁，适合朗读。
+- 金额必须明确写 GMC 或国脉币。
+- 可以带少量 emoji，但不要堆砌。"""
+
+    user_prompt = (
+        f"当前用户昵称：{user_data.get('nickname', '用户')}\n"
+        f"真实数据如下：\n{json.dumps(brief_data, ensure_ascii=False, indent=2)}"
+    )
+
+    completion = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        extra_body={"enable_thinking": False},
+    )
+    return (completion.choices[0].message.content or "").strip()
+
+
+@router.get("/elder-brief")
+def elder_brief(user=Depends(get_current_user)):
+    u = find_one("users.json", "username", user["sub"])
+    if not u:
+        raise HTTPException(404, "用户不存在")
+
+    brief_data = _build_elder_brief_payload(u)
+    api_key = _get_api_key(None)
+    if api_key:
+        try:
+            message = _call_dashscope_elder_brief(u, brief_data, api_key)
+        except Exception:
+            message = _generate_elder_brief_fallback(u, brief_data)
+    else:
+        message = _generate_elder_brief_fallback(u, brief_data)
+
+    return {
+        "message": message,
+        "brief": brief_data,
+        "timestamp": datetime.now().isoformat(),
+    }
+
+
 @router.post("/chat")
 def llm_chat(req: ChatReq, user=Depends(get_current_user)):
     u = find_one("users.json", "username", user["sub"])
@@ -541,7 +769,7 @@ def llm_chat(req: ChatReq, user=Depends(get_current_user)):
 
     if use_llm:
         try:
-            response, tool_calls = _call_dashscope(req.message, u, api_key)
+            response, tool_calls = _call_dashscope(req.message, u, api_key, mode=req.mode)
         except Exception as e:
             error_msg = str(e)
             response = _generate_fallback_response(req.message, u)
@@ -608,7 +836,7 @@ def llm_chat(req: ChatReq, user=Depends(get_current_user)):
     return {
         "user_message": req.message,
         "ai_response": response,
-        "model": read_settings().get("llm_model", "qwen3.5-flash") if use_llm else "local",
+        "model": read_settings().get("llm_model", DEFAULT_LLM_MODEL) if use_llm else "local",
         "tool_calls": tool_calls,
         "timestamp": datetime.now().isoformat()
     }
@@ -623,9 +851,200 @@ def llm_status(user=Depends(get_current_user)):
     return {
         "has_api_key": has_key,
         "key_source": "admin_settings" if api_key else ("env" if env_key else "default"),
-        "model": settings.get("llm_model", "qwen3.5-flash"),
+        "model": settings.get("llm_model", DEFAULT_LLM_MODEL),
         "mode": "qwen" if has_key else "local",
     }
+
+
+@router.websocket("/stream")
+async def llm_stream(ws: WebSocket, token: Optional[str] = Query(None)):
+    await ws.accept()
+
+    if not token:
+        await ws.send_json({"type": "error", "code": "no_token", "message": "缺少认证 token"})
+        await ws.close()
+        return
+
+    try:
+        payload = decode_jwt_token(token)
+    except ValueError as e:
+        await ws.send_json({"type": "error", "code": "bad_token", "message": str(e)})
+        await ws.close()
+        return
+
+    user = find_one("users.json", "username", payload.get("sub"))
+    if not user:
+        await ws.send_json({"type": "error", "code": "no_user", "message": "用户不存在"})
+        await ws.close()
+        return
+
+    api_key = _get_api_key(None)
+    if not api_key:
+        await ws.send_json({"type": "error", "code": "no_api_key", "message": "后端未配置 DashScope API Key"})
+        await ws.close()
+        return
+
+    settings = read_settings()
+    model = settings.get("llm_model", DEFAULT_LLM_MODEL)
+    loop = asyncio.get_running_loop()
+    mode = None
+    current_turn = {"id": None, "cancel": None}
+    turn_lock = threading.Lock()
+
+    def cancel_turn(turn_id: Optional[str] = None):
+        with turn_lock:
+            if current_turn["cancel"] and (turn_id is None or current_turn["id"] == turn_id):
+                current_turn["cancel"].set()
+
+    def run_turn(turn_id: str, content: str, mode_value: Optional[str], cancel_event: threading.Event):
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key, base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
+
+        def emit(payload: Dict[str, Any]):
+            if cancel_event.is_set():
+                return
+            payload["turn_id"] = turn_id
+            _send_ws_json(loop, ws, payload)
+
+        messages = [
+            {"role": "system", "content": _build_system_prompt(user, mode=mode_value)},
+            {"role": "user", "content": content},
+        ]
+        tool_calls_log: List[Dict[str, Any]] = []
+        max_tool_rounds = 5
+
+        for _ in range(max_tool_rounds):
+            if cancel_event.is_set():
+                emit({"type": "interrupted"})
+                return
+
+            completion = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                tools=LLM_TOOLS,
+                stream=True,
+                extra_body={"enable_thinking": False},
+            )
+
+            text_buffer = ""
+            finish_reason = None
+            tool_calls_acc: Dict[int, Dict[str, Any]] = {}
+
+            for chunk in completion:
+                if cancel_event.is_set():
+                    emit({"type": "interrupted"})
+                    return
+                if not chunk.choices:
+                    continue
+
+                choice = chunk.choices[0]
+                delta = choice.delta
+                finish_reason = choice.finish_reason
+
+                if getattr(delta, "content", None):
+                    text_buffer += delta.content
+                    emit({"type": "delta", "content": delta.content})
+
+                if getattr(delta, "tool_calls", None):
+                    for tc in delta.tool_calls:
+                        idx = tc.index
+                        if idx not in tool_calls_acc:
+                            tool_calls_acc[idx] = {
+                                "id": tc.id or str(uuid.uuid4()),
+                                "type": "function",
+                                "function": {"name": "", "arguments": ""}
+                            }
+                        if tc.id:
+                            tool_calls_acc[idx]["id"] = tc.id
+                        if tc.function:
+                            if tc.function.name:
+                                tool_calls_acc[idx]["function"]["name"] = tc.function.name
+                            if tc.function.arguments:
+                                tool_calls_acc[idx]["function"]["arguments"] += tc.function.arguments
+
+            if cancel_event.is_set():
+                emit({"type": "interrupted"})
+                return
+
+            if not tool_calls_acc:
+                emit({"type": "done", "content": text_buffer, "tool_calls": tool_calls_log, "finish_reason": finish_reason})
+                return
+
+            assistant_tool_calls = [tool_calls_acc[i] for i in sorted(tool_calls_acc)]
+            emit({"type": "tool_calls", "tool_calls": assistant_tool_calls})
+
+            tool_messages = []
+            for tc in assistant_tool_calls:
+                if cancel_event.is_set():
+                    emit({"type": "interrupted"})
+                    return
+                name = tc["function"]["name"]
+                args_str = tc["function"]["arguments"] or "{}"
+                try:
+                    args = json.loads(args_str)
+                except json.JSONDecodeError:
+                    args = {}
+                result = _execute_tool(name, args, user)
+                tool_record = {"name": name, "arguments": args, "result": result}
+                tool_calls_log.append(tool_record)
+                emit({"type": "tool_result", "tool_call": tool_record})
+                tool_messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": json.dumps(result, ensure_ascii=False),
+                })
+
+            messages.append({
+                "role": "assistant",
+                "content": text_buffer or None,
+                "tool_calls": assistant_tool_calls,
+            })
+            messages.extend(tool_messages)
+
+        emit({"type": "done", "content": "工具调用次数过多，请简化请求后重试。", "tool_calls": tool_calls_log, "finish_reason": "length"})
+
+    await ws.send_json({"type": "ready", "model": model})
+
+    try:
+        while True:
+            msg = await ws.receive_json()
+            mtype = msg.get("type")
+
+            if mtype == "set_mode":
+                mode = msg.get("mode")
+                continue
+
+            if mtype == "interrupt":
+                turn_id = msg.get("turn_id")
+                cancel_turn(turn_id)
+                await ws.send_json({"type": "interrupted", "turn_id": turn_id or current_turn.get("id")})
+                continue
+
+            if mtype == "close":
+                cancel_turn()
+                await ws.close()
+                return
+
+            if mtype != "message":
+                await ws.send_json({"type": "error", "code": "unknown_type", "message": f"未知消息类型: {mtype}"})
+                continue
+
+            content = (msg.get("content") or "").strip()
+            if not content:
+                continue
+
+            turn_id = msg.get("turn_id") or str(uuid.uuid4())
+            cancel_turn()
+            cancel_event = threading.Event()
+            with turn_lock:
+                current_turn["id"] = turn_id
+                current_turn["cancel"] = cancel_event
+
+            asyncio.create_task(asyncio.to_thread(run_turn, turn_id, content, mode, cancel_event))
+
+    except WebSocketDisconnect:
+        cancel_turn()
+        return
 
 @router.post("/auto-task")
 def create_auto_task(req: AutoTaskReq, user=Depends(get_current_user)):

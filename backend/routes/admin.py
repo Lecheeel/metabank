@@ -102,6 +102,7 @@ class SettingsUpdate(BaseModel):
     dashscope_api_key: Optional[str] = None
     llm_model: Optional[str] = None
     llm_system_prompt: Optional[str] = None
+    tts_speed_profile: Optional[str] = None
 
 @router.get("/settings")
 def get_settings(user=Depends(require_admin)):

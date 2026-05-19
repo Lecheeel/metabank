@@ -34,6 +34,73 @@
 \newpage
 
 %==============================================================================
+\section{需求背景}
+%==============================================================================
+
+\subsection{老龄化社会的金融服务挑战}
+
+根据国家统计局公开数据，截至 2024 年末，我国 60 岁及以上人口已达 2.97 亿，占总人口的 21.1\%，正加速迈入中度老龄化社会。与此同时，金融服务的数字化进程与老年群体的数字接纳能力之间形成了显著的结构性矛盾，具体表现在三个方面：
+
+\begin{itemize}
+\item \textbf{数字鸿沟。}主流金融应用以年轻用户为默认设计对象，字号偏小、交互层级深、术语密集。老年人上手困难，遇到风控弹窗、短信验证、人脸识别等环节时极易中断操作。
+\item \textbf{金融诈骗高发。}老年群体因信息不对称与信任容错高，长期位列电信诈骗受害者榜首。传统金融平台缺乏"家庭监护 + 大额二次确认"机制，一次操作即可造成不可逆的资金损失。
+\item \textbf{理财需求被忽视。}现有投顾产品以高风险高收益标的为主推，缺少针对老年人"稳健为先、通俗易懂"的专属路径。激进推荐反而会加剧风险敞口。
+\end{itemize}
+
+\subsection{项目定位}
+
+MetaBank 以"金融养老社区"为切入点，将\textbf{元宇宙交互范式}（后续通过硬件穿戴设备在真实空间中实现）与\textbf{AI 智能顾问}结合，重塑老年金融服务体验。本系统的设计目标概括为一个三元组：
+\begin{equation}
+\mathcal{G} = (\text{可达性 Accessibility},\; \text{可信性 Trustworthiness},\; \text{可理解性 Comprehensibility})
+\end{equation}
+即任何年龄段用户均可便捷接入（可达），大额与风险操作有监护与拦截（可信），所有建议与状态都能以通俗语言被用户所理解（可理解）。
+
+%==============================================================================
+\section{目标用户画像与应用场景}
+%==============================================================================
+
+\subsection{典型用户画像}
+
+本系统主要服务 60 岁以上银发群体及其家庭成员。通过用户访谈与画像聚类，我们提炼出三类典型角色：
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{画像} & \textbf{年龄} & \textbf{特征} & \textbf{核心诉求} \\
+\midrule
+退休教师张大爷 & 70 & 有一定理财经验，视力下降 & 稳健保值、防诈骗 \\
+独居李阿姨   & 65 & 不熟悉智能设备，子女在外 & 简单操作、子女可见 \\
+银发创客王爷爷 & 68 & 对新科技有探索欲 & 元宇宙体验、社交互动 \\
+\bottomrule
+\end{tabular}
+\caption{MetaBank 目标用户画像}
+\end{table}
+
+\subsection{典型应用场景}
+
+\subsubsection{场景一：稳健理财}
+
+张大爷登录 MetaBank 后，AI 顾问读取其风险偏好（保守型），在响应其"能不能多赚点"的询问时，主动规避高杠杆的国脉币期货 (GMFT)，转而推荐国脉币 (GMC) 稳定币定投与 AI 金融 ETF (AIFIN) 组合。系统在界面上以大字号、对比色强调"本金安全"与"预期年化"两个核心指标。
+
+\subsubsection{场景二：家庭监护}
+
+李阿姨在元宇宙商城购买"智能手环"等超出日常消费阈值的商品时，后端监护中间件根据 \texttt{daily\_limit} 配置触发二次确认流程：交易挂起并通过消息通道通知其已绑定的子女账户，由子女在移动端一键批准后方可落账。该流程有效缓解针对老年人的诱导性消费与诈骗。
+
+\subsubsection{场景三：社区互动}
+
+王爷爷通过穿戴式设备进入虚拟候鸟社区，在"社区公告牌"前浏览健康讲座通知，在"AI 顾问亭"前咨询近期市场，在"元宇宙商城"摊位挑选商品。整个交互以身体的走近与凝视触发，降低了按键与输入的认知负担。
+
+\subsection{与现有系统的差异化}
+
+\begin{itemize}
+\item 面向\textbf{老年群体}进行专属设计，而非通用金融平台的老年模式。
+\item \textbf{元宇宙交互}通过硬件穿戴设备在真实空间实现，避开纯 2D UI 的认知鸿沟。
+\item \textbf{价格模型}采用几何布朗运动 + 跳跃扩散 + 宏观因子，对老年用户展示更符合真实市场逻辑的行情（详见第 4 节）。
+\item \textbf{AI 顾问}以稳健保守为先验，主动拒绝高杠杆推荐。
+\end{itemize}
+
+%==============================================================================
 \section{系统概述}
 %==============================================================================
 
@@ -109,43 +176,122 @@ r \sim \mathrm{Uniform}(\{0,1\}^{160}), \quad H = \mathrm{SHA256}(r)[:36]
 \section{交易所与定价原理}
 %==============================================================================
 
+为体现真实金融市场的运行逻辑，MetaBank 在 v2 中放弃了简单的随机扰动模型，转而采用\textbf{宏观因子驱动的几何布朗运动}（GBM）叠加 \textbf{Merton 跳跃扩散}的混合定价框架。本节给出完整的数学表述与系统实现。
+
 \subsection{标的与基准价}
 
-设标的集合为 $\mathcal{T} = \{\tau_1, \tau_2, \ldots, \tau_n\}$，每个标的 $\tau_i$ 有基准价 $P_i^{(0)}$。例如：
+设标的集合为 $\mathcal{T} = \{\tau_1, \tau_2, \ldots, \tau_n\}$，每个标的 $\tau_i$ 有基准价 $P_i^{(0)}$：
 \begin{equation}
-P_{\mathtt{GM}}^{(0)} = 12.5,\quad P_{\mathtt{GMAI}}^{(0)} = 25.0,\quad P_{\mathtt{GMC}}^{(0)} = 1.0
+P_{\mathtt{GM}}^{(0)} = 12.5,\;\; P_{\mathtt{GMAI}}^{(0)} = 25.0,\;\; P_{\mathtt{GMC}}^{(0)} = 1.0,\;\; P_{\mathtt{GMFT}}^{(0)} = 1.05,\;\; P_{\mathtt{METAV}}^{(0)} = 100.0,\;\; P_{\mathtt{AIFIN}}^{(0)} = 50.0
 \end{equation}
 
-\subsection{当前价格模拟}
+\subsection{宏观因子建模}
+\label{sec:macro}
 
-为模拟市场波动，当前价格采用带随机扰动的几何形式：
-\begin{equation}
-P_t = P^{(0)} \cdot (1 + \varepsilon_t), \quad \varepsilon_t \sim \mathcal{N}(0, \sigma^2)
-\end{equation}
-其中 $\sigma \approx 0.03$，即约 3\% 的标准差。
+引入四个宏观因子刻画市场环境，记为向量 $\mathbf{F}_t = (\mathrm{CPI}_t,\, \mathrm{AI}_t,\, \mathrm{Gold}_t,\, \mathrm{Sent}_t)^{\top}$，其演化分别为：
 
-实现中，$\varepsilon_t$ 的随机种子由标的符号与当前时间共同决定，以保证同一分钟内价格稳定：
+\begin{itemize}
+\item \textbf{通胀指数 CPI}（随机游走，钳制于 $[0.5\%, 5\%]$）：
 \begin{equation}
-\mathrm{seed} = \mathrm{MD5}(\mathrm{symbol} \| \mathrm{datetime})[:8] \mod 2^{32}
+\mathrm{CPI}_{t+1} = \mathrm{clip}\bigl(\mathrm{CPI}_t + \eta^{c}_t,\; 0.5,\; 5.0\bigr),\quad \eta^{c}_t \sim \mathcal{N}(0, 0.05^2)
 \end{equation}
 
-\subsection{涨跌幅计算}
+\item \textbf{AI 热度}（Ornstein--Uhlenbeck 均值回复过程，$\theta=0.15$，$\mu_{\mathrm{AI}}=60$，钳制于 $[0,100]$）：
+\begin{equation}
+\mathrm{AI}_{t+1} = \mathrm{AI}_t + \theta\,(\mu_{\mathrm{AI}} - \mathrm{AI}_t) + \eta^{a}_t,\quad \eta^{a}_t \sim \mathcal{N}(0, 8^2)
+\end{equation}
+
+\item \textbf{黄金溢价}（与 CPI 正相关，钳制于 $[-2\%, 3\%]$）：
+\begin{equation}
+\mathrm{Gold}_{t+1} = 0.5\,(\mathrm{CPI}_{t+1} - 2.0) + \eta^{g}_t,\quad \eta^{g}_t \sim \mathcal{N}(0, 0.4^2)
+\end{equation}
+
+\item \textbf{市场情绪}（一阶自回归 AR(1)，钳制于 $[-1, +1]$）：
+\begin{equation}
+\mathrm{Sent}_{t+1} = 0.7\,\mathrm{Sent}_t + \eta^{s}_t,\quad \eta^{s}_t \sim \mathcal{N}(0, 0.25^2)
+\end{equation}
+\end{itemize}
+
+为节省计算开销，宏观因子在内存中按 60 秒 TTL 缓存，并通过 WebSocket 通道每 5 秒推送至前端宏观面板。
+
+\subsection{资产画像与差异化参数}
+\label{sec:profile}
+
+每个标的 $\tau$ 配备独立的画像参数 $\Theta_\tau = (\mu^{\tau}_{\mathrm{base}},\, \sigma^{\tau},\, \lambda^{\tau},\, \mu^{\tau}_J,\, \sigma^{\tau}_J,\, \boldsymbol{\beta}^{\tau})$，其中 $\boldsymbol{\beta}^{\tau} = (\beta^{\tau}_{\mathrm{cpi}},\, \beta^{\tau}_{\mathrm{ai}},\, \beta^{\tau}_{\mathrm{gold}},\, \beta^{\tau}_{\mathrm{sent}})$ 为四宏观因子敏感度。具体取值见下表：
+
+\begin{table}[h]
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lcccccccc@{}}
+\toprule
+\textbf{标的} & $\boldsymbol{\mu_{\text{base}}}$ & $\boldsymbol{\sigma}$ & $\boldsymbol{\lambda}$ & $\boldsymbol{\sigma_J}$ & $\boldsymbol{\beta_{\text{cpi}}}$ & $\boldsymbol{\beta_{\text{ai}}}$ & $\boldsymbol{\beta_{\text{gold}}}$ & $\boldsymbol{\beta_{\text{sent}}}$ \\
+\midrule
+GM (国脉科技)     & 0.08 & 0.25 & 6  & 0.04 & 0.3  & 0.5 & 0.0 & 0.4 \\
+GMAI (AI 概念)    & 0.15 & 0.40 & 12 & 0.07 & 0.2  & 1.2 & 0.0 & 0.6 \\
+GMC (国脉币)      & 0.02 & 0.05 & 1  & 0.01 & -0.1 & 0.0 & 0.0 & 0.1 \\
+GMFT (期货)       & 0.10 & 0.45 & 18 & 0.06 & 0.0  & 0.4 & 0.0 & 0.8 \\
+METAV (元宇宙指数)& 0.12 & 0.30 & 8  & 0.05 & 0.2  & 0.8 & 0.0 & 0.5 \\
+AIFIN (AI 金融 ETF)& 0.10 & 0.22 & 5  & 0.035& 0.1  & 0.7 & 0.0 & 0.4 \\
+\bottomrule
+\end{tabular}
+\caption{六个标的的差异化模型参数（年化口径）}
+\end{table}
+
+参数取值的业务直觉：稳定币 GMC 给予最低 $\sigma$ 与 $\lambda$，期货 GMFT 给予最高 $\lambda$ 与 $\beta_{\mathrm{sent}}$，AI 概念 GMAI 给予最高 $\beta_{\mathrm{ai}}$。
+
+\subsection{有效漂移率}
+
+价格漂移由"基础漂移 + 宏观因子线性组合"得到：
+\begin{align}
+\mu^{\tau}_{\mathrm{eff}}(t) ={}& \mu^{\tau}_{\mathrm{base}} + \beta^{\tau}_{\mathrm{cpi}} \cdot \frac{\mathrm{CPI}_t - 2}{100} + \beta^{\tau}_{\mathrm{ai}} \cdot \frac{\mathrm{AI}_t - 60}{40} \cdot 0.1 \notag \\
+& + \beta^{\tau}_{\mathrm{gold}} \cdot \frac{\mathrm{Gold}_t}{100} + \beta^{\tau}_{\mathrm{sent}} \cdot \mathrm{Sent}_t \cdot 0.05
+\end{align}
+其中 AI 热度与情绪系数的归一化常数（$0.1$ 与 $0.05$）使各因子对漂移率的边际贡献处于同一数量级。
+
+\subsection{几何布朗运动 + Merton 跳跃扩散}
+
+价格的连续时间动力学满足以下随机微分方程：
+\begin{equation}
+\boxed{\;dS^{\tau}_t = \mu^{\tau}_{\mathrm{eff}}(t)\, S^{\tau}_t\, dt + \sigma^{\tau} S^{\tau}_t\, dW_t + \bigl(J^{\tau}_t - 1\bigr) S^{\tau}_t\, dN_t\;}
+\end{equation}
+其中：
+\begin{itemize}
+\item $W_t$ 为标准 Brown 运动，提供连续扩散项；
+\item $N_t \sim \mathrm{Poisson}(\lambda^{\tau} \cdot t)$ 为跳跃计数过程；
+\item $\ln J^{\tau}_t \sim \mathcal{N}(\mu^{\tau}_J,\, (\sigma^{\tau}_J)^2)$ 为对数正态跳跃幅度。
+\end{itemize}
+
+跳跃项捕捉了真实市场中由突发事件（监管、产业政策、AI 热点、黑天鹅）触发的价格不连续。期货标的 GMFT 配置较高的 $\lambda$ 与 $\sigma_J$，使其呈现典型的"高频厚尾"特征；稳定币 GMC 则几乎平稳运行。
+
+\subsection{离散日级递推}
+
+设步长 $\Delta t = 1/252$（一个交易日），运用 Itô 引理对 $\ln S_t$ 离散化，可得：
+\begin{equation}
+S^{\tau}_{t+\Delta t} = S^{\tau}_t \cdot \exp\!\left[\bigl(\mu^{\tau}_{\mathrm{eff}} - \tfrac{1}{2}(\sigma^{\tau})^2\bigr)\Delta t + \sigma^{\tau}\sqrt{\Delta t}\,Z_t + \mathbb{1}_{U < \lambda^{\tau} \Delta t} \cdot \xi_t\right]
+\end{equation}
+其中 $Z_t \sim \mathcal{N}(0,1)$，$U \sim \mathrm{Uniform}(0,1)$ 用以采样当日是否发生跳跃，$\xi_t \sim \mathcal{N}(\mu^{\tau}_J, (\sigma^{\tau}_J)^2)$ 为对数跳跃幅度。当日跳跃概率 $\lambda^{\tau}\Delta t$ 已远小于 1，故采用伯努利近似（一日最多一次跳跃）。
+
+数值稳定性方面，对模拟价格作软钳制 $S^{\tau}_t \in [0.2\, P^{(0)},\, 5\, P^{(0)}]$，避免长程模拟中出现指数爆炸。
+
+\subsection{涨跌幅与 K 线生成}
+
+K 线 OHLC 由日级递推自然生成：
+\begin{align}
+O_i &= S^{\tau}_{i-1} \\
+C_i &= S^{\tau}_{i} \\
+H_i &= \max(O_i, C_i) \cdot (1 + U^{H}_i),\quad U^{H}_i \sim \bigl|\mathcal{N}(0, (0.3\sigma^{\tau}/\sqrt{252})^2)\bigr| + 0.003 \\
+L_i &= \min(O_i, C_i) \cdot (1 - U^{L}_i),\quad U^{L}_i \sim \bigl|\mathcal{N}(0, (0.3\sigma^{\tau}/\sqrt{252})^2)\bigr| + 0.003
+\end{align}
+
+成交量与日内波动幅度联动，模拟真实市场"放量伴随大幅波动"的现象：
+\begin{equation}
+V_i \sim \mathrm{Uniform}(5\!\times\!10^4, 3\!\times\!10^5) \cdot \Bigl(1 + 5 \cdot \frac{|C_i - O_i|}{O_i}\Bigr)
+\end{equation}
 
 涨跌幅定义为：
 \begin{equation}
-\Delta\% = \frac{P_t - P^{(0)}}{P^{(0)}} \times 100\%
+\Delta\%_i = \frac{C_i - O_i}{O_i} \times 100\%
 \end{equation}
-
-\subsection{K 线生成}
-
-K 线 (OHLC) 数据满足：
-\begin{align}
-O_i &= P_i \\
-C_i &= P_i + \delta_i, \quad \delta_i \sim \mathcal{N}(0, 0.02 \cdot P_i) \\
-H_i &= \max(O_i, C_i) \cdot (1 + U_1), \quad U_1 \sim \mathrm{Uniform}(0, 0.015) \\
-L_i &= \min(O_i, C_i) \cdot (1 - U_2), \quad U_2 \sim \mathrm{Uniform}(0, 0.015)
-\end{align}
-成交量 $V_i$ 在 $[10^4, 5\times10^5]$ 间均匀采样。
 
 \subsection{交易成本}
 
@@ -153,12 +299,14 @@ L_i &= \min(O_i, C_i) \cdot (1 - U_2), \quad U_2 \sim \mathrm{Uniform}(0, 0.015)
 \begin{equation}
 \mathrm{Total} = P_{\mathrm{trade}} \times Q
 \end{equation}
-其中 $P_{\mathrm{trade}}$ 为成交价，$Q$ 为数量（份）。
-
-余额更新规则：
+其中 $P_{\mathrm{trade}}$ 为成交价，$Q$ 为数量（份）。余额更新规则：
 \begin{equation}
 B_{\mathrm{new}} = B_{\mathrm{old}} - \mathrm{Total} \quad (\text{买入}), \qquad B_{\mathrm{new}} = B_{\mathrm{old}} + \mathrm{Total} \quad (\text{卖出})
 \end{equation}
+
+\subsection{对前端的可视化暴露}
+
+为让用户直观感知市场逻辑，第 \ref{sec:macro} 节定义的宏观因子向量 $\mathbf{F}_t$ 以 5 秒一拍的频率通过 WebSocket 通道（\texttt{/api/exchange/ws/macro}）推送至前端"市场宏观面板"，并以箭头标注与上一拍的方向变化。当 WebSocket 不可用时，前端降级为 60 秒 HTTP 轮询 \texttt{/api/exchange/macro}，保障可用性。
 
 %==============================================================================
 \section{定投 (DCA) 原理}

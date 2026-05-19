@@ -73,9 +73,9 @@ export default function Wallet() {
         </div>
         <div className="bg-gray-50 rounded-xl" style={{ marginTop: '1.5rem', padding: '1.25rem' }}>
           <p style={{ fontSize: '1.0625rem', color: '#6b7280', marginBottom: '0.5rem' }}>钱包地址</p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 font-mono text-orange-500 break-all" style={{ fontSize: '1rem' }}>{walletInfo.wallet_address}</code>
-            <button onClick={copyAddress} className="p-2 rounded-lg hover:bg-gray-100 transition-all" style={{ color: '#6b7280' }}>
+          <div className="flex items-center gap-2 min-w-0">
+            <code className="flex-1 font-mono text-orange-500 break-all min-w-0" style={{ fontSize: '1rem' }}>{walletInfo.wallet_address}</code>
+            <button onClick={copyAddress} className="p-2 rounded-lg hover:bg-gray-100 transition-all flex-shrink-0" style={{ color: '#6b7280' }}>
               {copied ? <CheckCircle size={20} className="text-green-400" /> : <Copy size={20} />}
             </button>
           </div>
@@ -133,22 +133,22 @@ export default function Wallet() {
         <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.25rem' }}>交易记录</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {walletInfo.transactions?.map(t => (
-            <div key={t.id} className="card flex items-center justify-between" style={{ padding: '1.25rem' }}>
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+            <div key={t.id} className="card flex items-center justify-between" style={{ padding: '1.25rem', gap: '1rem' }}>
+              <div className="flex items-center gap-4 min-w-0 flex-1">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
                   t.to_address === walletInfo.wallet_address ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
                 }`}>
                   {t.to_address === walletInfo.wallet_address ? <ArrowDownRight size={24} /> : <ArrowUpRight size={24} />}
                 </div>
-                <div>
-                  <p style={{ fontSize: '1rem', fontWeight: 500 }}>{t.note || (t.type === 'transfer' ? '转账' : t.type)}</p>
+                <div className="min-w-0">
+                  <p className="truncate" style={{ fontSize: '1rem', fontWeight: 500 }}>{t.note || (t.type === 'transfer' ? '转账' : t.type)}</p>
                   <p style={{ fontSize: '1.0625rem', color: '#6b7280' }}>{new Date(t.created_at).toLocaleString('zh-CN')}</p>
-                  <p className="font-mono" style={{ fontSize: '1.0625rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                  <p className="font-mono truncate" style={{ fontSize: '1.0625rem', color: '#6b7280', marginTop: '0.25rem' }}>
                     {t.to_address === walletInfo.wallet_address ? `来自: ${t.from_address?.slice(0, 16)}...` : `发至: ${t.to_address?.slice(0, 16)}...`}
                   </p>
                 </div>
               </div>
-              <span className={`font-mono font-semibold ${t.to_address === walletInfo.wallet_address ? 'text-green-400' : 'text-red-400'}`} style={{ fontSize: '1.25rem' }}>
+              <span className={`font-mono font-semibold flex-shrink-0 ${t.to_address === walletInfo.wallet_address ? 'text-green-400' : 'text-red-400'}`} style={{ fontSize: '1.25rem' }}>
                 {t.to_address === walletInfo.wallet_address ? '+' : '-'}{t.amount?.toLocaleString()}
               </span>
             </div>

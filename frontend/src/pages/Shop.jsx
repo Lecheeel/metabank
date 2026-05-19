@@ -71,7 +71,7 @@ export default function Shop() {
                 <div className="text-5xl text-center group-hover:scale-110 transition-transform" style={{ marginBottom: '1.25rem' }}>
                   {p.image || '📦'}
                 </div>
-                <h3 className="font-semibold mb-1" style={{ fontSize: '1.125rem' }}>{p.name}</h3>
+                <h3 className="font-semibold mb-1 truncate" style={{ fontSize: '1.125rem' }}>{p.name}</h3>
                 <p className="line-clamp-2 mb-3" style={{ fontSize: '1.0625rem', color: '#6b7280' }}>{p.description}</p>
                 <div className="flex items-center justify-between">
                   <div>
@@ -123,8 +123,8 @@ export default function Shop() {
       )}
 
       {buyModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setBuyModal(null)}>
-          <div className="card w-full max-w-md" onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4" onClick={() => setBuyModal(null)}>
+          <div className="card w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div className="flex items-center justify-between">
               <h3 className="font-semibold" style={{ fontSize: '1.25rem' }}>购买商品</h3>
               <button onClick={() => setBuyModal(null)} className="text-gray-400 hover:text-gray-900"><X size={24} /></button>

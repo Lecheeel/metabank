@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../utils/api';
-import { TrendingUp, TrendingDown, BarChart3, Briefcase, History, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart3, Briefcase, History, ArrowUpRight, ArrowDownRight, Activity, Minus } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 
 export default function Exchange() {
@@ -12,6 +12,9 @@ export default function Exchange() {
   const [tab, setTab] = useState('market');
   const [tradeForm, setTradeForm] = useState({ action: 'buy', amount: '' });
   const [msg, setMsg] = useState('');
+  const [macro, setMacro] = useState(null);
+  const [macroMode, setMacroMode] = useState('connecting'); // connecting | ws | http
+  const prevMacroRef = useRef(null);
 
   useEffect(() => {
     api.get('/exchange/stocks').then(d => { setStocks(d); if (d.length) setSelected(d[0]); });
@@ -25,6 +28,38 @@ export default function Exchange() {
     }
   }, [selected?.symbol]);
 
+  // 宏观因子 WebSocket 实时推送，失败降级为 60s HTTP 轮询
+  useEffect(() => {
+    let ws = null;
+    let fallbackTimer = null;
+    const startHttpFallback = () => {
+      setMacroMode('http');
+      const fetchMacro = () => api.get('/exchange/macro').then(setMacro).catch(() => {});
+      fetchMacro();
+      fallbackTimer = setInterval(fetchMacro, 60000);
+    };
+    try {
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${proto}://${location.host}/api/exchange/ws/macro`);
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          setMacro(prev => { prevMacroRef.current = prev; return data; });
+          setMacroMode('ws');
+        } catch { /* ignore */ }
+      };
+      ws.onerror = () => { try { ws && ws.close(); } catch {} startHttpFallback(); };
+      ws.onclose = () => { if (macroMode !== 'http') startHttpFallback(); };
+    } catch {
+      startHttpFallback();
+    }
+    return () => {
+      if (ws) try { ws.close(); } catch {}
+      if (fallbackTimer) clearInterval(fallbackTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleTrade = async () => {
     if (!selected || !tradeForm.amount) return;
     try {
@@ -34,7 +69,11 @@ export default function Exchange() {
         amount: parseFloat(tradeForm.amount),
         price: selected.current_price
       });
-      setMsg(res.message);
+      if (res.status === 'pending_approval') {
+        setMsg(`⏳ ${res.message}`);
+      } else {
+        setMsg(res.message);
+      }
       setTradeForm({ ...tradeForm, amount: '' });
       api.get('/exchange/portfolio').then(setPortfolio);
       api.get('/exchange/history').then(setHistory);
@@ -129,13 +168,56 @@ export default function Exchange() {
           </div>
 
           <div className="space-y-3">
+            <div className="card" style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #fffbeb 100%)', border: '1px solid #fed7aa' }}>
+              <div className="flex items-center justify-between" style={{ marginBottom: '0.75rem' }}>
+                <h3 className="font-semibold flex items-center gap-1.5" style={{ fontSize: '1rem', color: '#9a3412' }}>
+                  <Activity size={16} />市场宏观面板
+                </h3>
+                <span className="flex items-center gap-1" style={{ fontSize: '0.75rem', color: macroMode === 'ws' ? '#16a34a' : macroMode === 'http' ? '#ea580c' : '#9ca3af' }}>
+                  <span style={{
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: macroMode === 'ws' ? '#16a34a' : macroMode === 'http' ? '#ea580c' : '#9ca3af',
+                    animation: macroMode === 'ws' ? 'pulse 1.5s infinite' : 'none'
+                  }} />
+                  {macroMode === 'ws' ? '实时' : macroMode === 'http' ? '轮询' : '连接中'}
+                </span>
+              </div>
+              {macro ? (
+                <div className="space-y-2">
+                  {[
+                    { key: 'cpi', label: '通胀指数 CPI', value: macro.cpi, unit: '%', thresh: 0.02 },
+                    { key: 'ai_heat', label: 'AI 热度', value: macro.ai_heat, unit: '/100', thresh: 1 },
+                    { key: 'gold_premium', label: '黄金溢价', value: macro.gold_premium, unit: '%', thresh: 0.05, signed: true },
+                    { key: 'sentiment', label: '市场情绪', value: macro.sentiment, unit: '', thresh: 0.02, signed: true },
+                  ].map(m => {
+                    const prev = prevMacroRef.current && prevMacroRef.current[m.key];
+                    const diff = prev !== undefined && prev !== null ? (m.value - prev) : 0;
+                    const arrow = Math.abs(diff) < m.thresh ? 'flat' : (diff > 0 ? 'up' : 'down');
+                    return (
+                      <div key={m.key} className="flex items-center justify-between" style={{ fontSize: '0.875rem', gap: '0.5rem' }}>
+                        <span className="flex-shrink-0" style={{ color: '#6b7280' }}>{m.label}</span>
+                        <span className="flex items-center gap-1 font-mono text-right" style={{ color: '#111827' }}>
+                          {m.signed && m.value >= 0 ? '+' : ''}{typeof m.value === 'number' ? m.value.toFixed(m.key === 'ai_heat' ? 1 : 2) : '-'}{m.unit}
+                          {arrow === 'up' && <TrendingUp size={14} className="text-green-500" />}
+                          {arrow === 'down' && <TrendingDown size={14} className="text-red-500" />}
+                          {arrow === 'flat' && <Minus size={14} className="text-gray-400" />}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-gray-400" style={{ fontSize: '0.875rem' }}>加载中...</p>
+              )}
+            </div>
+
             <h3 className="text-base text-gray-500 font-medium">交易标的</h3>
             {stocks.map(s => (
               <div key={s.symbol} onClick={() => setSelected(s)}
                 className={`card cursor-pointer flex items-center justify-between py-3 ${selected?.symbol === s.symbol ? 'border-orange-300' : ''}`}>
-                <div>
-                  <p className="font-medium text-base">{s.name}</p>
-                  <p className="text-base text-gray-400">{s.symbol}</p>
+                <div className="min-w-0 flex-1 mr-2">
+                  <p className="font-medium text-base truncate">{s.name}</p>
+                  <p className="text-base text-gray-400 truncate">{s.symbol}</p>
                   <span className={`text-base px-2 py-0.5 rounded-full mt-1 inline-block ${
                     s.category === 'ai_stock' ? 'bg-orange-50 text-orange-500' :
                     s.category === 'futures' ? 'bg-amber-500/15 text-amber-400' :

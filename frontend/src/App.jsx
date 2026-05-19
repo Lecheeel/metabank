@@ -11,6 +11,8 @@ import Chat from './pages/Chat';
 import AIAssistant from './pages/AIAssistant';
 import Admin from './pages/Admin';
 import Landing from './pages/Landing';
+import ElderAdvisor from './pages/ElderAdvisor';
+import Guardian from './pages/Guardian';
 
 function PrivateRoute({ children }) {
   return isLoggedIn() ? children : <Navigate to="/login" />;
@@ -30,6 +32,8 @@ export default function App() {
           <Route path="exchange" element={<Exchange />} />
           <Route path="chat" element={<Chat />} />
           <Route path="ai" element={<AIAssistant />} />
+          <Route path="elder" element={<ElderAdvisor />} />
+          <Route path="guardian" element={<Guardian />} />
           <Route path="admin" element={<Admin />} />
         </Route>
       </Routes>

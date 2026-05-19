@@ -5,6 +5,9 @@ from auth_utils import get_current_user, require_admin
 from datetime import datetime
 from typing import Optional
 import uuid
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+import guardian_utils
 
 router = APIRouter()
 
@@ -87,10 +90,34 @@ def create_order(req: OrderCreate, user=Depends(get_current_user)):
     if product["category"] == "physical" and (not req.shipping_address or not req.shipping_phone):
         raise HTTPException(400, "实物商品请填写收货地址和手机号")
 
+    # 监护拦截
+    if guardian_utils.check_needs_approval(buyer, total):
+        approval = guardian_utils.create_pending_approval(
+            buyer, "order",
+            {"product_id": req.product_id, "quantity": req.quantity,
+             "shipping_address": req.shipping_address, "shipping_phone": req.shipping_phone},
+            total,
+        )
+        return {
+            "status": "pending_approval",
+            "approval_id": approval["id"],
+            "message": f"订单金额 {total} GMC 超过大额阈值，已通知监护人审批",
+        }
+
+    return _do_order(buyer, {"product_id": req.product_id, "quantity": req.quantity,
+                              "shipping_address": req.shipping_address, "shipping_phone": req.shipping_phone})
+
+
+def _do_order(buyer: dict, meta: dict) -> dict:
+    product = find_one("products.json", "id", meta["product_id"])
+    if not product:
+        raise HTTPException(404, "商品不存在")
+    total = product["price"] * meta["quantity"]
+
     update_json("users.json", "id", buyer["id"], {"balance": buyer["balance"] - total})
     update_json("products.json", "id", product["id"], {
-        "stock": product["stock"] - req.quantity,
-        "sales": product.get("sales", 0) + req.quantity
+        "stock": product["stock"] - meta["quantity"],
+        "sales": product.get("sales", 0) + meta["quantity"]
     })
 
     order = {
@@ -99,11 +126,11 @@ def create_order(req: OrderCreate, user=Depends(get_current_user)):
         "username": buyer["username"],
         "product_id": product["id"],
         "product_name": product["name"],
-        "quantity": req.quantity,
+        "quantity": meta["quantity"],
         "total_price": total,
         "category": product["category"],
-        "shipping_address": req.shipping_address,
-        "shipping_phone": req.shipping_phone,
+        "shipping_address": meta.get("shipping_address"),
+        "shipping_phone": meta.get("shipping_phone"),
         "status": "completed" if product["category"] == "virtual" else "pending_ship",
         "created_at": datetime.now().isoformat()
     }
@@ -117,7 +144,7 @@ def create_order(req: OrderCreate, user=Depends(get_current_user)):
         "to_address": "0xGM_SHOP_SYSTEM",
         "to_name": "MetaBank商城",
         "amount": total,
-        "note": f"购买 {product['name']} x{req.quantity}",
+        "note": f"购买 {product['name']} x{meta['quantity']}",
         "created_at": datetime.now().isoformat()
     }
     append_json("transactions.json", txn)

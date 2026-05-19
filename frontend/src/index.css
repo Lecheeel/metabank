@@ -158,3 +158,33 @@ body {
 
 .animate-float      { animation: float 3s ease-in-out infinite; }
 .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* ── 老年无障碍大字模式 ── */
+html.a11y-large { font-size: 20px; }
+html.a11y-large body { font-size: 1.125rem; }
+html.a11y-large .input-field { padding: 1.1rem 1.35rem; font-size: 1.25rem; }
+html.a11y-large .btn-primary,
+html.a11y-large .btn-secondary { padding: 1rem 2.25rem; font-size: 1.25rem; }
+html.a11y-large .card { padding: 2rem; }
+
+/* 高对比模式 */
+html.a11y-contrast body { background: #ffffff; color: #000000; }
+html.a11y-contrast a,
+html.a11y-contrast button { text-decoration-thickness: 2px; }
+html.a11y-contrast .card { border-color: #111827; }
+
+/* 老年顾问/监护中心专用的更大字号基线 */
+.senior-ui { font-size: 1.25rem; }
+.senior-ui h1 { font-size: 2rem; }
+.senior-ui h2 { font-size: 1.5rem; }
+.senior-ui button { min-height: 3rem; font-size: 1.125rem; }
+.senior-ui .btn-primary { padding: 1rem 2.25rem; font-size: 1.25rem; }
+
+/* 大字模式下商品描述多显示一行 */
+html.a11y-large .line-clamp-2 {
+  -webkit-line-clamp: 3;
+}
+/* 大字模式下侧边栏导航字号保持可读但不溢出 */
+html.a11y-large nav a, html.a11y-large nav button {
+  font-size: 1rem !important;
+}

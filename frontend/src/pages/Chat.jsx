@@ -183,8 +183,8 @@ export default function Chat() {
           </div>
         </div>
       ) : (
-    <div className="flex-1 flex" style={{ gap: '1.5rem' }}>
-      <div className="w-80 flex-shrink-0 flex flex-col card overflow-hidden">
+    <div className="flex-1 flex flex-col md:flex-row" style={{ gap: '1.5rem' }}>
+      <div className="w-full md:w-72 flex-shrink-0 flex flex-col card overflow-hidden">
         <div className="border-b border-gray-200" style={{ padding: '1.25rem' }}>
           <div className="flex items-center justify-between" style={{ marginBottom: '1rem' }}>
             <h2 className="font-semibold flex items-center gap-2" style={{ fontSize: '1.125rem' }}><Users size={20} />消息</h2>
@@ -265,8 +265,8 @@ export default function Chat() {
                 const isMine = m.from_username === me?.username;
                 return (
                   <div key={m.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-xs lg:max-w-md ${isMine ? 'order-1' : ''}`}>
-                      <div className={`rounded-2xl ${isMine ? 'bg-orange-50 border border-orange-100 rounded-br-md' : 'bg-gray-50 border border-gray-200 rounded-bl-md'}`} style={{ padding: '1rem 1.25rem' }}>
+                    <div className={`max-w-xs sm:max-w-sm md:max-w-md ${isMine ? 'order-1' : ''}`}>
+                      <div className={`rounded-2xl ${isMine ? 'bg-orange-50 border border-orange-100 rounded-br-md' : 'bg-gray-50 border border-gray-200 rounded-bl-md'}`} style={{ padding: '1rem 1.25rem', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                         <p style={{ color: '#111827', fontSize: '1rem' }}>{m.content}</p>
                         {m.transfer_amount > 0 && (
                           <div className="mt-2 rounded-xl p-2 text-center" style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}>

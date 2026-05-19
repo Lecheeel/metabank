@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
-import { Users, ShoppingBag, TrendingUp, Activity, Package, Coins, Plus, Settings, Eye, EyeOff, Key, Bot, Trash2 } from 'lucide-react';
+import { Users, Activity, Package, Coins, Plus, Settings, Eye, EyeOff, Key, Bot, Trash2, Volume2 } from 'lucide-react';
+
+const TTS_SPEED_OPTIONS = [
+  { value: 'slow', label: '慢速', hint: '更稳、更适合长者慢慢听' },
+  { value: 'standard', label: '标准', hint: '推荐，清晰且比当前更利落' },
+  { value: 'fast', label: '较快', hint: '更有活力，适合熟悉系统的用户' },
+];
 
 export default function Admin() {
   const [dashboard, setDashboard] = useState(null);
@@ -16,25 +22,27 @@ export default function Admin() {
 
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
-  const [modelInput, setModelInput] = useState('qwen3.5-flash');
+  const [modelInput, setModelInput] = useState('qwen3.6-flash');
   const [systemPrompt, setSystemPrompt] = useState('');
+  const [ttsSpeedProfile, setTtsSpeedProfile] = useState('standard');
   const [savingSettings, setSavingSettings] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = () => {
+  function loadData() {
     api.get('/admin/dashboard').then(setDashboard).catch(() => {});
     api.get('/admin/users').then(setUsers).catch(() => {});
     api.get('/admin/orders').then(setOrders).catch(() => {});
     api.get('/admin/products').then(setProducts).catch(() => {});
     api.get('/admin/settings').then(s => {
       setSettings(s);
-      setModelInput(s.llm_model || 'qwen3.5-flash');
+      setModelInput(s.llm_model || 'qwen3.6-flash');
       setSystemPrompt(s.llm_system_prompt || '');
+      setTtsSpeedProfile(s.tts_speed_profile || 'standard');
     }).catch(() => {});
-  };
+  }
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const handleAdjustBalance = async () => {
     if (!adjustUser || !adjustAmount) return;
@@ -76,6 +84,7 @@ export default function Admin() {
       const payload = {
         llm_model: modelInput,
         llm_system_prompt: systemPrompt,
+        tts_speed_profile: ttsSpeedProfile,
       };
       if (apiKeyInput.trim()) {
         payload.dashscope_api_key = apiKeyInput.trim();
@@ -316,6 +325,9 @@ export default function Admin() {
               {settings?.has_api_key && settings?.dashscope_api_key_masked && (
                 <p className="font-mono" style={{ fontSize: '1rem', color: '#6b7280' }}>已配置: {settings.dashscope_api_key_masked}</p>
               )}
+              <p style={{ fontSize: '1rem', color: '#6b7280' }}>
+                当前朗读速度：{TTS_SPEED_OPTIONS.find(item => item.value === (settings?.tts_speed_profile || ttsSpeedProfile))?.label || '标准'}
+              </p>
             </div>
 
             <div>
@@ -354,10 +366,7 @@ export default function Admin() {
             <div>
               <label className="block mb-2" style={{ fontSize: '1.0625rem', color: '#6b7280' }}>模型选择</label>
               <select className="input-field" value={modelInput} onChange={e => setModelInput(e.target.value)}>
-                <option value="qwen3.5-flash">Qwen 3.5 Flash（推荐，速度快）</option>
-                <option value="qwen-plus">Qwen Plus（更强）</option>
-                <option value="qwen-turbo">Qwen Turbo（最快）</option>
-                <option value="qwen-max">Qwen Max（最强）</option>
+                <option value="qwen3.6-flash">Qwen 3.6 Flash（推荐，速度快）</option>
               </select>
             </div>
 
@@ -370,6 +379,37 @@ export default function Admin() {
                 onChange={e => setSystemPrompt(e.target.value)}
                 rows={3}
               />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-2 mb-3" style={{ fontSize: '1.0625rem', color: '#6b7280' }}>
+                <Volume2 size={16} />
+                全局 AI 朗读速度
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: '0.75rem' }}>
+                {TTS_SPEED_OPTIONS.map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setTtsSpeedProfile(option.value)}
+                    className="text-left rounded-2xl transition-all"
+                    style={{
+                      padding: '1rem',
+                      border: ttsSpeedProfile === option.value ? '2px solid #fb923c' : '1px solid #e5e7eb',
+                      background: ttsSpeedProfile === option.value ? 'linear-gradient(135deg,#fff7ed 0%,#fffbeb 100%)' : '#ffffff',
+                    }}
+                  >
+                    <div className="flex items-center justify-between" style={{ marginBottom: '0.35rem' }}>
+                      <span style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#111827' }}>{option.label}</span>
+                      {ttsSpeedProfile === option.value && <span style={{ fontSize: '0.875rem', color: '#ea580c', fontWeight: 700 }}>已选中</span>}
+                    </div>
+                    <p style={{ fontSize: '1rem', color: '#6b7280', lineHeight: 1.6 }}>{option.hint}</p>
+                  </button>
+                ))}
+              </div>
+              <p style={{ fontSize: '0.95rem', color: '#9ca3af', marginTop: '0.75rem', lineHeight: 1.7 }}>
+                此设置会统一影响 AI 助手和老年顾问页面的语音播报速度。
+              </p>
             </div>
 
             <button

@@ -4,6 +4,9 @@ from storage import read_json, find_one, update_json, append_json
 from auth_utils import get_current_user
 from datetime import datetime
 import uuid
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+import guardian_utils
 
 router = APIRouter()
 
@@ -41,8 +44,28 @@ def transfer(req: TransferReq, user=Depends(get_current_user)):
     if sender["wallet_address"] == req.to_address:
         raise HTTPException(400, "不能给自己转账")
 
-    update_json("users.json", "id", sender["id"], {"balance": sender["balance"] - req.amount})
-    update_json("users.json", "id", receiver["id"], {"balance": receiver["balance"] + req.amount})
+    # 监护拦截
+    if guardian_utils.check_needs_approval(sender, req.amount):
+        approval = guardian_utils.create_pending_approval(
+            sender, "transfer",
+            {"to_address": req.to_address, "amount": req.amount, "note": req.note or ""},
+            req.amount,
+        )
+        return {
+            "status": "pending_approval",
+            "approval_id": approval["id"],
+            "message": f"转账金额 {req.amount} GMC 超过大额阈值，已通知监护人审批",
+        }
+
+    return _do_transfer(sender, req.to_address, req.amount, req.note or "")
+
+
+def _do_transfer(sender: dict, to_address: str, amount: float, note: str) -> dict:
+    receiver = find_one("users.json", "wallet_address", to_address)
+    if not receiver:
+        raise HTTPException(404, "接收方钱包地址不存在")
+    update_json("users.json", "id", sender["id"], {"balance": sender["balance"] - amount})
+    update_json("users.json", "id", receiver["id"], {"balance": receiver["balance"] + amount})
 
     txn = {
         "id": str(uuid.uuid4()),
@@ -51,12 +74,12 @@ def transfer(req: TransferReq, user=Depends(get_current_user)):
         "from_name": sender["nickname"],
         "to_address": receiver["wallet_address"],
         "to_name": receiver["nickname"],
-        "amount": req.amount,
-        "note": req.note,
+        "amount": amount,
+        "note": note,
         "created_at": datetime.now().isoformat()
     }
     append_json("transactions.json", txn)
-    return {"message": "转账成功", "transaction": txn, "new_balance": sender["balance"] - req.amount}
+    return {"message": "转账成功", "transaction": txn, "new_balance": sender["balance"] - amount}
 
 @router.get("/transactions")
 def get_transactions(user=Depends(get_current_user)):
