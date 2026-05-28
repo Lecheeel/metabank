@@ -122,13 +122,13 @@ export default function Admin() {
 
       {msg && (
         <div className="px-4 py-3 rounded-xl flex justify-between" style={{ background: '#dcfce7', border: '1px solid #86efac', color: '#15803d', fontSize: '1rem' }}>
-          {msg}<button onClick={() => setMsg('')}>&times;</button>
+          {msg}<button onClick={() => setMsg('')} className="ui-icon-button" aria-label="关闭提示">&times;</button>
         </div>
       )}
 
-      <div className="flex gap-2 flex-wrap">
+      <div className="ui-tab-group">
         {[['overview', '概览'], ['users', '用户'], ['orders', '订单'], ['products', '商品'], ['settings', '系统设置']].map(([k, v]) => (
-          <button key={k} onClick={() => setTab(k)} className="px-4 py-2 rounded-xl font-medium transition-all flex items-center gap-1.5" style={{ fontSize: '1rem', ...(tab === k ? { background: '#fff7ed', color: '#ea580c', border: '1px solid #fcd34d' } : { color: '#6b7280', border: '1px solid transparent' }) }}>
+          <button key={k} onClick={() => setTab(k)} className={tab === k ? 'ui-tab-button ui-tab-button-active' : 'ui-tab-button'}>
             {k === 'settings' && <Settings size={16} />}
             {v}
           </button>
@@ -356,7 +356,7 @@ export default function Admin() {
                   </button>
                 </div>
                 {settings?.has_api_key && (
-                  <button onClick={handleClearApiKey} className="px-3 py-2 rounded-xl text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-all" title="清除 API Key">
+                  <button onClick={handleClearApiKey} className="ui-icon-button ui-icon-button-danger" title="清除 API Key">
                     <Trash2 size={16} />
                   </button>
                 )}

@@ -3,6 +3,12 @@
 /* ── 强制亮色模式，不受系统影响 ── */
 :root {
   color-scheme: light;
+  --app-sidebar-mobile-width: min(86vw, 320px);
+  --app-sidebar-desktop-width: 288px;
+  --app-sidebar-brand-title-size: 20px;
+  --app-sidebar-brand-subtitle-size: 13px;
+  --app-sidebar-nav-font-size: 17px;
+  --app-sidebar-meta-font-size: 14px;
 }
 
 @theme {
@@ -78,10 +84,11 @@ body {
   gap: 0.5rem;
   background: linear-gradient(135deg, #f97316, #ea580c);
   color: #ffffff;
-  padding: 0.75rem 2rem;
-  border-radius: 0.75rem;
-  font-weight: 600;
-  font-size: 1.125rem;
+  min-height: 3rem;
+  padding: 0.875rem 1.75rem;
+  border-radius: 0.875rem;
+  font-weight: 700;
+  font-size: 1.0625rem;
   border: none;
   cursor: pointer;
   transition: all 0.25s;
@@ -101,10 +108,11 @@ body {
   gap: 0.5rem;
   background: #ffffff;
   color: #f97316;
-  padding: 0.75rem 2rem;
-  border-radius: 0.75rem;
-  font-weight: 600;
-  font-size: 1.125rem;
+  min-height: 3rem;
+  padding: 0.875rem 1.75rem;
+  border-radius: 0.875rem;
+  font-weight: 700;
+  font-size: 1.0625rem;
   border: 1.5px solid #f97316;
   cursor: pointer;
   transition: all 0.25s;
@@ -113,6 +121,161 @@ body {
 }
 .btn-secondary:hover {
   background: #fff7ed;
+}
+
+.ui-tab-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.ui-tab-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0.75rem 1.125rem;
+  border-radius: 1rem;
+  border: 1px solid transparent;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 1.03125rem;
+  line-height: 1.2;
+  font-weight: 650;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.ui-tab-button:hover {
+  color: #111827;
+  background: #fafafb;
+  border-color: #e5e7eb;
+  transform: translateY(-1px);
+}
+
+.ui-tab-button-active {
+  background: #fff7ed;
+  color: #ea580c;
+  border-color: #fdba74;
+  box-shadow: 0 6px 16px rgba(249,115,22,0.08);
+}
+
+.ui-tab-button-active:hover {
+  color: #c2410c;
+  background: #fff7ed;
+  border-color: #fdba74;
+}
+
+.ui-pill-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.875rem;
+  padding: 0.6875rem 1rem;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 1rem;
+  line-height: 1.15;
+  font-weight: 650;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.ui-pill-button:hover {
+  color: #111827;
+  background: #fafafb;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.ui-pill-button-active {
+  background: #fff7ed;
+  color: #ea580c;
+  border-color: #fdba74;
+  box-shadow: 0 6px 16px rgba(249,115,22,0.08);
+}
+
+.ui-pill-button-active:hover {
+  color: #c2410c;
+  background: #fff7ed;
+  border-color: #fdba74;
+}
+
+.ui-pill-button-danger {
+  color: #ef4444;
+  border-color: #fecaca;
+  background: #fffafa;
+}
+
+.ui-pill-button-danger:hover {
+  color: #dc2626;
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.ui-chip-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.875rem;
+  padding: 0.6875rem 1rem;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 1rem;
+  line-height: 1.15;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.ui-chip-button:hover {
+  color: #111827;
+  background: #ffffff;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.ui-chip-button-active {
+  background: #fff7ed;
+  color: #ea580c;
+  border-color: #fdba74;
+}
+
+.ui-icon-button {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.875rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #6b7280;
+  font-size: 1.25rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.ui-icon-button:hover {
+  background: #f9fafb;
+  color: #111827;
+  border-color: #e5e7eb;
+  transform: translateY(-1px);
+}
+
+.ui-icon-button-danger {
+  color: #ef4444;
+  border-color: #fee2e2;
+}
+
+.ui-icon-button-danger:hover {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
 }
 
 .card {
@@ -146,6 +309,240 @@ body {
 }
 .input-field::placeholder { color: #9ca3af; }
 
+.app-sidebar {
+  width: var(--app-sidebar-mobile-width);
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+}
+
+.app-sidebar-brand {
+  padding: 24px 20px 18px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.app-sidebar-brand-shell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-sidebar-brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg,#f97316,#ea580c);
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.app-sidebar-brand-copy {
+  min-width: 0;
+}
+
+.app-sidebar-brand-title {
+  display: block;
+  font-size: var(--app-sidebar-brand-title-size);
+  line-height: 1.1;
+}
+
+.app-sidebar-brand-subtitle {
+  margin-top: 4px;
+  font-size: var(--app-sidebar-brand-subtitle-size);
+  line-height: 1.35;
+  color: #9ca3af;
+}
+
+.app-sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.app-sidebar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-sidebar-group-title {
+  padding: 0 12px;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+}
+
+.app-sidebar-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.app-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  color: #4b5563;
+  font-size: var(--app-sidebar-nav-font-size);
+  line-height: 1.25;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.app-sidebar-link:hover {
+  background: #f9fafb;
+  color: #111827;
+}
+
+.app-sidebar-link-active {
+  background: #fff7ed;
+  color: #ea580c;
+  box-shadow: inset 0 0 0 1px #fed7aa;
+}
+
+.app-sidebar-link-active:hover {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.app-sidebar-link-label {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.app-sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.app-sidebar-font-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  background: #fff7ed;
+  color: #ea580c;
+  font-size: 15px;
+  font-weight: 700;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.app-sidebar-font-button-active {
+  background: linear-gradient(135deg,#f97316,#ea580c);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.app-sidebar-font-copy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-sidebar-font-state {
+  font-size: 13px;
+  line-height: 1;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.72);
+}
+
+.app-sidebar-font-button-active .app-sidebar-font-state {
+  background: rgba(255,255,255,0.16);
+}
+
+.app-sidebar-user-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-sidebar-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg,#f97316,#ea580c);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.app-sidebar-user-copy {
+  min-width: 0;
+}
+
+.app-sidebar-user-name {
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-sidebar-user-wallet {
+  margin-top: 2px;
+  font-size: var(--app-sidebar-meta-font-size);
+  line-height: 1.25;
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-sidebar-logout {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #fee2e2;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #ef4444;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.app-sidebar-logout:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+@media (min-width: 1024px) {
+  .app-sidebar {
+    width: var(--app-sidebar-desktop-width);
+  }
+}
+
 /* ── 动画 ── */
 @keyframes float {
   0%, 100% { transform: translateY(0); }
@@ -166,6 +563,33 @@ html.a11y-large .input-field { padding: 1.1rem 1.35rem; font-size: 1.25rem; }
 html.a11y-large .btn-primary,
 html.a11y-large .btn-secondary { padding: 1rem 2.25rem; font-size: 1.25rem; }
 html.a11y-large .card { padding: 2rem; }
+html.a11y-large .ui-tab-button {
+  min-height: 3.25rem;
+  padding: 0.85rem 1.25rem;
+  font-size: 1.125rem;
+}
+html.a11y-large .ui-pill-button,
+html.a11y-large .ui-chip-button {
+  min-height: 3.1rem;
+  padding: 0.8rem 1.1rem;
+  font-size: 1.0625rem;
+}
+html.a11y-large .ui-icon-button {
+  width: 3rem;
+  height: 3rem;
+}
+html.a11y-large {
+  --app-sidebar-mobile-width: min(88vw, 336px);
+  --app-sidebar-desktop-width: 304px;
+  --app-sidebar-brand-title-size: 22px;
+  --app-sidebar-brand-subtitle-size: 14px;
+  --app-sidebar-nav-font-size: 18px;
+  --app-sidebar-meta-font-size: 15px;
+}
+html.a11y-large .app-sidebar-group-title { font-size: 13px; }
+html.a11y-large .app-sidebar-font-button,
+html.a11y-large .app-sidebar-logout { font-size: 17px; }
+html.a11y-large .app-sidebar-user-name { font-size: 17px; }
 
 /* 高对比模式 */
 html.a11y-contrast body { background: #ffffff; color: #000000; }
@@ -183,8 +607,4 @@ html.a11y-contrast .card { border-color: #111827; }
 /* 大字模式下商品描述多显示一行 */
 html.a11y-large .line-clamp-2 {
   -webkit-line-clamp: 3;
-}
-/* 大字模式下侧边栏导航字号保持可读但不溢出 */
-html.a11y-large nav a, html.a11y-large nav button {
-  font-size: 1rem !important;
 }

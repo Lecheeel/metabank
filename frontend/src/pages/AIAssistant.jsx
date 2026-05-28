@@ -236,13 +236,13 @@ export default function AIAssistant() {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => { setAutoSpeak(v => !v); if (speaking) stop(); }} className="px-4 py-2 rounded-xl font-medium transition-all flex items-center gap-1.5" style={{ fontSize: '1.0625rem', ...(autoSpeak ? { background: '#fff7ed', color: '#ea580c', border: '1px solid #fed7aa' } : { color: '#6b7280', border: '1px solid #e5e7eb' }) }}>
+        <div className="ui-tab-group">
+          <button onClick={() => { setAutoSpeak(v => !v); if (speaking) stop(); }} className={autoSpeak ? 'ui-pill-button ui-pill-button-active' : 'ui-pill-button'}>
             <Volume2 size={14} />{autoSpeak ? '自动朗读开' : '自动朗读关'}
           </button>
-          <button onClick={() => setShowKeyConfig(!showKeyConfig)} className="px-4 py-2 rounded-xl font-medium transition-all flex items-center gap-1.5" style={{ fontSize: '1.0625rem', ...(showKeyConfig ? { background: '#fff7ed', color: '#ea580c', border: '1px solid #fed7aa' } : { color: '#6b7280', border: '1px solid #e5e7eb' }) }}><Key size={12} />API Key</button>
-          <button onClick={() => setTab('chat')} className="px-4 py-2 rounded-xl font-medium transition-all" style={{ fontSize: '1rem', ...(tab === 'chat' ? { background: '#fff7ed', color: '#ea580c', border: '1px solid #fcd34d' } : { color: '#6b7280', border: '1px solid transparent' }) }}>AI对话</button>
-          <button onClick={() => setTab('tasks')} className="px-4 py-2 rounded-xl font-medium transition-all flex items-center gap-1" style={{ fontSize: '1rem', ...(tab === 'tasks' ? { background: '#fff7ed', color: '#ea580c', border: '1px solid #fcd34d' } : { color: '#6b7280', border: '1px solid transparent' }) }}><Clock size={16} />自动任务</button>
+          <button onClick={() => setShowKeyConfig(!showKeyConfig)} className={showKeyConfig ? 'ui-pill-button ui-pill-button-active' : 'ui-pill-button'}><Key size={13} />API Key</button>
+          <button onClick={() => setTab('chat')} className={tab === 'chat' ? 'ui-pill-button ui-pill-button-active' : 'ui-pill-button'}>AI对话</button>
+          <button onClick={() => setTab('tasks')} className={tab === 'tasks' ? 'ui-pill-button ui-pill-button-active' : 'ui-pill-button'}><Clock size={16} />自动任务</button>
         </div>
       </div>
 
@@ -250,17 +250,17 @@ export default function AIAssistant() {
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className="flex items-center justify-between">
             <h3 className="font-semibold flex items-center gap-2" style={{ fontSize: '1.0625rem' }}><Key size={16} className="text-orange-500" />个人 API Key 配置</h3>
-            <button onClick={() => setShowKeyConfig(false)} className="text-gray-400 hover:text-gray-900" style={{ fontSize: '1.25rem' }}>&times;</button>
+            <button onClick={() => setShowKeyConfig(false)} className="ui-icon-button" aria-label="关闭 API Key 配置">&times;</button>
           </div>
           <p style={{ fontSize: '1.0625rem', color: '#6b7280' }}>配置您自己的 DashScope API Key，优先级高于管理员配置。</p>
-          {savedUserKey ? <div className="flex items-center justify-between bg-green-500/5 border border-green-500/20 rounded-xl px-4 py-3"><div className="flex items-center gap-2"><CheckCircle size={16} className="text-green-400" /><span className="text-green-400" style={{ fontSize: '1.0625rem' }}>已配置个人 API Key</span></div><button onClick={handleClearUserKey} className="text-red-400/60 hover:text-red-400">清除</button></div> : <div className="flex gap-2"><div className="relative flex-1"><input type={showApiKey ? 'text' : 'password'} className="input-field pr-10 font-mono" placeholder="输入您的 DashScope API Key (sk-...)" value={userApiKey} onChange={e => setUserApiKey(e.target.value)} /><button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-500" onClick={() => setShowApiKey(!showApiKey)}>{showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}</button></div><button onClick={handleSaveUserKey} className="btn-primary px-5">保存</button></div>}
+          {savedUserKey ? <div className="flex items-center justify-between bg-green-500/5 border border-green-500/20 rounded-xl px-4 py-3"><div className="flex items-center gap-2"><CheckCircle size={16} className="text-green-400" /><span className="text-green-400" style={{ fontSize: '1.0625rem' }}>已配置个人 API Key</span></div><button onClick={handleClearUserKey} className="ui-pill-button ui-pill-button-danger">清除</button></div> : <div className="flex gap-2"><div className="relative flex-1"><input type={showApiKey ? 'text' : 'password'} className="input-field pr-12 font-mono" placeholder="输入您的 DashScope API Key (sk-...)" value={userApiKey} onChange={e => setUserApiKey(e.target.value)} /><button type="button" className="ui-icon-button absolute right-2 top-1/2 -translate-y-1/2" onClick={() => setShowApiKey(!showApiKey)} aria-label={showApiKey ? '隐藏 API Key' : '显示 API Key'}>{showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}</button></div><button onClick={handleSaveUserKey} className="btn-primary px-5">保存</button></div>}
         </div>
       )}
 
       {tab === 'chat' && (
         <div className="flex flex-col h-[calc(100vh-14rem)]">
-          <div className="flex flex-wrap" style={{ gap: '0.75rem', marginBottom: '1rem' }}>
-            {quickPrompts.map((q, i) => <button key={i} onClick={() => setInput(q.prompt)} className="flex items-center gap-2 rounded-full bg-gray-50 border border-gray-200 text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all" style={{ padding: '0.5rem 1rem', fontSize: '1rem' }}><q.icon size={16} className="flex-shrink-0" /><span className="truncate">{q.label}</span></button>)}
+          <div className="ui-tab-group" style={{ marginBottom: '1rem' }}>
+            {quickPrompts.map((q, i) => <button key={i} onClick={() => setInput(q.prompt)} className="ui-chip-button"><q.icon size={16} className="flex-shrink-0" /><span className="truncate">{q.label}</span></button>)}
           </div>
           <div className="flex-1 card overflow-y-auto" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {groupedMessages.map((m, i) => (

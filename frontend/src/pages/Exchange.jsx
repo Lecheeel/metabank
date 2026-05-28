@@ -87,9 +87,9 @@ export default function Exchange() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
       <div className="flex items-center justify-between flex-wrap" style={{ gap: '0.75rem' }}>
         <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#111827' }}>交易所</h1>
-        <div className="flex gap-2">
+        <div className="ui-tab-group">
           {[['market', '行情', BarChart3], ['portfolio', '持仓', Briefcase], ['history', '历史', History]].map(([k, v, Icon]) => (
-            <button key={k} onClick={() => setTab(k)} className={`px-5 py-2.5 rounded-xl font-medium transition-all flex items-center gap-1.5 ${tab === k ? 'bg-orange-50 text-orange-400 border border-orange-200' : 'text-gray-500 hover:text-gray-900'}`} style={{ fontSize: '1rem' }}>
+            <button key={k} onClick={() => setTab(k)} className={tab === k ? 'ui-tab-button ui-tab-button-active' : 'ui-tab-button'}>
               <Icon size={18} />{v}
             </button>
           ))}
@@ -98,7 +98,7 @@ export default function Exchange() {
 
       {msg && (
         <div className="rounded-xl flex justify-between" style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#ea580c', padding: '1rem 1.25rem', fontSize: '1rem' }}>
-          {msg}<button onClick={() => setMsg('')}>&times;</button>
+          {msg}<button onClick={() => setMsg('')} className="ui-icon-button" aria-label="关闭提示">&times;</button>
         </div>
       )}
 
@@ -141,18 +141,18 @@ export default function Exchange() {
                 <div className="mt-4 space-y-3">
                   <div className="flex gap-2">
                     <button onClick={() => setTradeForm({...tradeForm, action: 'buy'})}
-                      className={`flex-1 py-2 rounded-xl font-medium transition-all ${tradeForm.action === 'buy' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'text-gray-400 hover:text-gray-500 border border-gray-200'}`}>
+                      className={`flex-1 min-h-12 px-4 rounded-2xl font-semibold transition-all ${tradeForm.action === 'buy' ? 'bg-green-500/20 text-green-500 border border-green-500/30' : 'bg-white text-gray-500 hover:text-gray-700 border border-gray-200'}`}>
                       买入
                     </button>
                     <button onClick={() => setTradeForm({...tradeForm, action: 'sell'})}
-                      className={`flex-1 py-2 rounded-xl font-medium transition-all ${tradeForm.action === 'sell' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'text-gray-400 hover:text-gray-500 border border-gray-200'}`}>
+                      className={`flex-1 min-h-12 px-4 rounded-2xl font-semibold transition-all ${tradeForm.action === 'sell' ? 'bg-red-500/20 text-red-500 border border-red-500/30' : 'bg-white text-gray-500 hover:text-gray-700 border border-gray-200'}`}>
                       卖出
                     </button>
                   </div>
                   <div className="flex gap-2">
                     <input type="number" min="1" className="input-field flex-1" placeholder="数量（份）"
                       value={tradeForm.amount} onChange={e => setTradeForm({...tradeForm, amount: e.target.value})} />
-                    <button onClick={handleTrade} className={`px-6 rounded-xl font-medium transition-all ${tradeForm.action === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}>
+                    <button onClick={handleTrade} className={`min-h-12 px-6 rounded-2xl font-semibold transition-all ${tradeForm.action === 'buy' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}>
                       {tradeForm.action === 'buy' ? '买入' : '卖出'}
                     </button>
                   </div>

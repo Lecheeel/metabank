@@ -38,11 +38,11 @@ export default function Shop() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
       <div className="flex items-center justify-between">
         <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#111827' }}>元宇宙商城</h1>
-        <div className="flex gap-2">
-          <button onClick={() => setTab('products')} className={`px-4 py-2 rounded-xl font-medium transition-all ${tab === 'products' ? 'bg-orange-50 text-orange-400 border border-orange-200' : 'text-gray-500 hover:text-gray-900'}`} style={{ fontSize: '1rem' }}>
+        <div className="ui-tab-group">
+          <button onClick={() => setTab('products')} className={tab === 'products' ? 'ui-tab-button ui-tab-button-active' : 'ui-tab-button'}>
             <ShoppingCart size={18} className="inline mr-1" />商品
           </button>
-          <button onClick={() => setTab('orders')} className={`px-4 py-2 rounded-xl font-medium transition-all ${tab === 'orders' ? 'bg-orange-50 text-orange-400 border border-orange-200' : 'text-gray-500 hover:text-gray-900'}`} style={{ fontSize: '1rem' }}>
+          <button onClick={() => setTab('orders')} className={tab === 'orders' ? 'ui-tab-button ui-tab-button-active' : 'ui-tab-button'}>
             <Package size={18} className="inline mr-1" />订单
           </button>
         </div>
@@ -51,15 +51,15 @@ export default function Shop() {
       {msg && (
         <div className="px-4 py-3 rounded-xl flex items-center justify-between" style={{ background: '#dcfce7', border: '1px solid #86efac', color: '#15803d', fontSize: '1rem' }}>
           {msg}
-          <button onClick={() => setMsg('')}>&times;</button>
+          <button onClick={() => setMsg('')} className="ui-icon-button" aria-label="关闭提示">&times;</button>
         </div>
       )}
 
       {tab === 'products' && (
         <>
-          <div className="flex gap-2 flex-wrap">
+          <div className="ui-tab-group">
             {[['all', '全部'], ['virtual', '虚拟商品'], ['physical', '实物商品']].map(([k, v]) => (
-              <button key={k} onClick={() => setCategory(k)} className={`px-4 py-2 rounded-full transition-all ${category === k ? 'bg-orange-50 text-orange-600 border border-orange-200' : 'text-gray-400 hover:text-gray-600'}`} style={{ fontSize: '1rem' }}>
+              <button key={k} onClick={() => setCategory(k)} className={category === k ? 'ui-pill-button ui-pill-button-active' : 'ui-pill-button'}>
                 {v}
               </button>
             ))}

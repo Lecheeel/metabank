@@ -55,7 +55,7 @@ export default function Wallet() {
       {msg && (
         <div className="rounded-xl flex items-center justify-between" style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#ea580c', padding: '1rem 1.25rem', fontSize: '1rem' }}>
           {msg}
-          <button onClick={() => setMsg('')} style={{ color: '#6b7280' }}>&times;</button>
+          <button onClick={() => setMsg('')} className="ui-icon-button" aria-label="关闭提示">&times;</button>
         </div>
       )}
 
@@ -75,7 +75,7 @@ export default function Wallet() {
           <p style={{ fontSize: '1.0625rem', color: '#6b7280', marginBottom: '0.5rem' }}>钱包地址</p>
           <div className="flex items-center gap-2 min-w-0">
             <code className="flex-1 font-mono text-orange-500 break-all min-w-0" style={{ fontSize: '1rem' }}>{walletInfo.wallet_address}</code>
-            <button onClick={copyAddress} className="p-2 rounded-lg hover:bg-gray-100 transition-all flex-shrink-0" style={{ color: '#6b7280' }}>
+            <button onClick={copyAddress} className="ui-icon-button flex-shrink-0" aria-label="复制钱包地址">
               {copied ? <CheckCircle size={20} className="text-green-400" /> : <Copy size={20} />}
             </button>
           </div>

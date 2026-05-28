@@ -165,11 +165,11 @@ export default function Chat() {
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
-      <div className="flex gap-2 mb-4">
-        <button onClick={() => setMode('chat')} className="px-4 py-2 rounded-xl font-medium transition-all" style={{ fontSize: '1.125rem', ...(mode === 'chat' ? { background: '#fff7ed', color: '#ea580c', border: '1px solid #fed7aa' } : { color: '#6b7280', border: '1px solid #e5e7eb' }) }}>
+      <div className="ui-tab-group" style={{ marginBottom: '1rem' }}>
+        <button onClick={() => setMode('chat')} className={mode === 'chat' ? 'ui-tab-button ui-tab-button-active' : 'ui-tab-button'}>
           <MessageCircle size={18} className="inline mr-1.5 align-middle" />消息
         </button>
-        <button onClick={() => setMode('feed')} className="px-4 py-2 rounded-xl font-medium transition-all" style={{ fontSize: '1.125rem', ...(mode === 'feed' ? { background: '#fff7ed', color: '#ea580c', border: '1px solid #fed7aa' } : { color: '#6b7280', border: '1px solid #e5e7eb' }) }}>
+        <button onClick={() => setMode('feed')} className={mode === 'feed' ? 'ui-tab-button ui-tab-button-active' : 'ui-tab-button'}>
           <Users size={18} className="inline mr-1.5 align-middle" />社区动态
         </button>
       </div>
@@ -254,7 +254,7 @@ export default function Chat() {
                   <h3 className="font-semibold" style={{ fontSize: '1.125rem' }}>{activeChat.nickname}</h3>
                   <p className="text-gray-400 font-mono" style={{ fontSize: '1rem' }}>{activeChat.wallet_address}</p>
                 </div>
-                <button onClick={() => setShowTransfer(!showTransfer)} className="px-4 py-2 rounded-lg flex items-center gap-1.5 transition-all" style={{ fontSize: '1rem', ...(showTransfer ? { background: '#fff7ed', color: '#ea580c' } : { color: '#6b7280' }) }}>
+                <button onClick={() => setShowTransfer(!showTransfer)} className={showTransfer ? 'ui-tab-button ui-tab-button-active' : 'ui-tab-button'}>
                   <Wallet size={16} />转账
                 </button>
               </div>

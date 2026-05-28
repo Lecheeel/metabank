@@ -87,15 +87,14 @@ export default function Guardian() {
 
       {msg && (
         <div className="rounded-xl flex justify-between" style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#ea580c', padding: '1rem 1.25rem', fontSize: '1.125rem' }}>
-          {msg}<button onClick={() => setMsg('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ea580c', fontSize: '1.25rem' }}>×</button>
+          {msg}<button onClick={() => setMsg('')} className="ui-icon-button" aria-label="关闭提示">×</button>
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="ui-tab-group">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-medium transition-all"
-            style={{ fontSize: '1rem', background: tab === t.key ? '#fff7ed' : 'transparent', color: tab === t.key ? '#ea580c' : '#6b7280', border: tab === t.key ? '1px solid #fed7aa' : '1px solid transparent' }}>
+            className={tab === t.key ? 'ui-tab-button ui-tab-button-active' : 'ui-tab-button'}>
             <t.icon size={18} className="flex-shrink-0" />
             <span className="truncate" style={{ maxWidth: '9rem' }}>{t.label}</span>
           </button>
