@@ -40,7 +40,7 @@ STOCKS_INFO = [
     {"symbol": "AIFIN", "name": "AI金融ETF", "code": "AI-FIN", "base_price": 50.0, "category": "ai_stock"},
 ]
 
-DEFAULT_API_KEY = "sk-462e7320be3d4608bca013c7fdd6d18b"
+DEFAULT_API_KEY = "sk-9e6322b7cb6f4ef0bd9451910756e4bd"
 DEFAULT_LLM_MODEL = "qwen3.6-flash"
 
 # 工具定义：供 Qwen 模型在用户有相应需求时调用
